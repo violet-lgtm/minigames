@@ -30,7 +30,8 @@ export class GameEngine {
             'straight': ['left', 'right'],
             'corner': ['top', 'right'],
             't-junction': ['left', 'top', 'right'],
-            'cross': ['top', 'right', 'bottom', 'left']
+            'cross': ['top', 'right', 'bottom', 'left'],
+            'bridge': ['left', 'right']
         };
 
         let connections = baseConnections[type] || [];

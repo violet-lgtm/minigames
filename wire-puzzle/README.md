@@ -29,6 +29,7 @@ A web-based puzzle game where you rotate tiles with wires to connect a power sou
   - Corner Wire (┗) - Turns 90 degrees
   - T-Junction (┣) - Connects three sides
   - Cross (+) - Connects all four sides
+  - Bridge (╬) - Wire overpass where one wire goes over another
 - **Tools**:
   - Place Mode: Click to add tiles
   - Rotate Mode: Click to rotate existing tiles
@@ -86,6 +87,7 @@ wire-puzzle/
 | Corner | ┗ | L-shaped wire | Top-Right (rotates) |
 | T-Junction | ┣ | Three-way wire | Left-Top-Right (rotates) |
 | Cross | + | Four-way wire | All sides |
+| Bridge | ╬ | Wire overpass/underpass | Left-Right or Top-Bottom (only straight through) |
 
 ## 🔧 Creating Custom Levels
 

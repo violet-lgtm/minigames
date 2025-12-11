@@ -184,6 +184,7 @@
             // Test mode - play test level immediately
             levels = [testLevel];
             currentLevelIndex = 0;
+            document.getElementById('backBtn').textContent = '✕ Close Tab';
             startGame(testLevel);
         } else if (mode === 'custom') {
             document.getElementById('pageTitle').textContent = 'Custom Levels';
@@ -311,7 +312,7 @@
 
         document.getElementById('backBtn').addEventListener('click', () => {
             if (testLevel) {
-                window.location.href = 'editor.html';
+                window.close();
             } else {
                 showLevelSelector();
             }

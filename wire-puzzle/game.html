@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wire Puzzle - Play</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .game-area {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #gameCanvas {
+            width: 600px;
+            height: 600px;
+        }
+
+        .level-list {
+            max-height: 70vh;
+            overflow-y: auto;
+            width: 100%;
+        }
+
+        .level-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .level-item:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .level-item.active {
+            border-color: #FFD700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .level-info h3 {
+            margin-bottom: 5px;
+        }
+
+        .level-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .scrollable {
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .scrollable::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollable::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        .scrollable::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 1000px) {
+            .game-area {
+                flex-direction: column;
+            }
+
+            #gameCanvas {
+                width: 100%;
+                max-width: 600px;
+                height: auto;
+                aspect-ratio: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">← Back to Menu</a>
+
+    <div class="container game-container">
+        <header>
+            <h1 id="pageTitle">Play Wire Puzzle</h1>
+        </header>
+
+        <div id="levelSelector" style="display: none;">
+            <h2 id="selectorTitle">Select a Level</h2>
+            <div class="grid grid-2 level-list" id="levelList"></div>
+        </div>
+
+        <div id="gameArea" class="game-area" style="display: none;">
+            <div>
+                <canvas id="gameCanvas" width="600" height="600"></canvas>
+                <div class="controls">
+                    <button class="btn btn-secondary" id="resetBtn">🔄 Reset</button>
+                    <button class="btn btn-secondary" id="backBtn">← Back to Levels</button>
+                </div>
+            </div>
+
+            <div>
+                <div class="info-panel">
+                    <h2 id="levelName">Level Name</h2>
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-label">Moves</div>
+                            <div class="stat-value" id="moveCount">0</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Status</div>
+                            <div class="stat-value" id="status">Solving...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-panel">
+                    <h3>How to Play</h3>
+                    <p style="text-align: left; margin: 10px 0;">
+                        🖱️ Click on tiles to rotate them<br>
+                        ⚡ Connect the power source to the light<br>
+                        🎯 Solve in minimum moves!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="winModal">
+        <div class="modal-content">
+            <div class="win-message">🎉 Level Complete!</div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-label">Total Moves</div>
+                    <div class="stat-value" id="finalMoves">0</div>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-primary" id="nextLevelBtn">Next Level →</button>
+                <button class="btn btn-secondary" id="replayBtn">🔄 Replay</button>
+                <button class="btn btn-secondary" id="menuBtn">← Back to Levels</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { GameEngine } from './js/core/engine.js';
+        import { Renderer } from './js/core/renderer.js';
+        import { Storage } from './js/core/storage.js';
+        import { builtInLevels } from './js/core/levels.js';
+
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode') || 'builtin';
+        const testLevel = Storage.getTestLevel();
+
+        let levels = [];
+        let currentLevelIndex = -1;
+        let engine = null;
+        let renderer = null;
+
+        // Initialize
+        if (testLevel) {
+            // Test mode - play test level immediately
+            levels = [testLevel];
+            currentLevelIndex = 0;
+            startGame(testLevel);
+        } else if (mode === 'custom') {
+            document.getElementById('pageTitle').textContent = 'Custom Levels';
+            document.getElementById('selectorTitle').textContent = 'Select a Custom Level';
+            levels = Storage.getCustomLevels();
+            showLevelSelector();
+        } else {
+            levels = builtInLevels;
+            showLevelSelector();
+        }
+
+        function showLevelSelector() {
+            document.getElementById('levelSelector').style.display = 'block';
+            document.getElementById('gameArea').style.display = 'none';
+
+            const levelList = document.getElementById('levelList');
+            levelList.innerHTML = '';
+
+            if (levels.length === 0) {
+                levelList.innerHTML = '<div class="info-panel"><p>No custom levels found. Create one in the Level Editor!</p><a href="editor.html" class="btn btn-primary">Go to Editor</a></div>';
+                return;
+            }
+
+            levels.forEach((level, index) => {
+                const item = document.createElement('div');
+                item.className = 'level-item';
+                item.innerHTML = `
+                    <div class="level-info">
+                        <h3>${level.name}</h3>
+                        <span class="badge badge-${level.difficulty || 'easy'}">${level.difficulty || 'easy'}</span>
+                        <span style="color: #aaa;">${level.gridSize.width}×${level.gridSize.height}</span>
+                    </div>
+                    <div class="level-actions">
+                        ${mode === 'custom' ? `
+                            <button class="btn btn-small btn-secondary edit-btn" data-index="${index}">✏️ Edit</button>
+                            <button class="btn btn-small btn-danger delete-btn" data-index="${index}">🗑️</button>
+                        ` : ''}
+                    </div>
+                `;
+
+                item.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('btn')) {
+                        currentLevelIndex = index;
+                        startGame(level);
+                    }
+                });
+
+                levelList.appendChild(item);
+            });
+
+            // Add event listeners for edit/delete buttons
+            if (mode === 'custom') {
+                document.querySelectorAll('.edit-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const index = parseInt(btn.dataset.index);
+                        window.location.href = `editor.html?edit=${levels[index].id}`;
+                    });
+                });
+
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const index = parseInt(btn.dataset.index);
+                        if (confirm(`Delete level "${levels[index].name}"?`)) {
+                            Storage.deleteLevel(levels[index].id);
+                            levels = Storage.getCustomLevels();
+                            showLevelSelector();
+                        }
+                    });
+                });
+            }
+        }
+
+        function startGame(level) {
+            document.getElementById('levelSelector').style.display = 'none';
+            document.getElementById('gameArea').style.display = 'flex';
+            document.getElementById('levelName').textContent = level.name;
+
+            const canvas = document.getElementById('gameCanvas');
+            renderer = new Renderer(canvas, level.gridSize);
+            engine = new GameEngine(level);
+
+            engine.onUpdate = updateUI;
+
+            // Handle canvas clicks
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const gridPos = renderer.screenToGrid(x, y);
+                if (gridPos) {
+                    engine.rotateTile(gridPos.x, gridPos.y);
+                }
+            });
+
+            updateUI();
+        }
+
+        function updateUI() {
+            const state = engine.getState();
+            renderer.drawGrid(state.tiles);
+            document.getElementById('moveCount').textContent = state.moveCount;
+            document.getElementById('status').textContent = state.won ? '✓ Complete!' : 'Solving...';
+
+            if (state.won) {
+                setTimeout(showWinModal, 500);
+            }
+        }
+
+        function showWinModal() {
+            document.getElementById('finalMoves').textContent = engine.moveCount;
+            document.getElementById('winModal').classList.add('active');
+
+            // Hide next level button if this is the last level
+            const nextBtn = document.getElementById('nextLevelBtn');
+            nextBtn.style.display = (currentLevelIndex < levels.length - 1) ? 'inline-block' : 'none';
+        }
+
+        // Button handlers
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            engine.reset();
+        });
+
+        document.getElementById('backBtn').addEventListener('click', () => {
+            if (testLevel) {
+                window.location.href = 'editor.html';
+            } else {
+                showLevelSelector();
+            }
+        });
+
+        document.getElementById('nextLevelBtn').addEventListener('click', () => {
+            document.getElementById('winModal').classList.remove('active');
+            currentLevelIndex++;
+            startGame(levels[currentLevelIndex]);
+        });
+
+        document.getElementById('replayBtn').addEventListener('click', () => {
+            document.getElementById('winModal').classList.remove('active');
+            engine.reset();
+        });
+
+        document.getElementById('menuBtn').addEventListener('click', () => {
+            document.getElementById('winModal').classList.remove('active');
+            showLevelSelector();
+        });
+    </script>
+</body>
+</html>

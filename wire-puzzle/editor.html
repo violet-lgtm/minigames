@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wire Puzzle - Level Editor</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .editor-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        #editorCanvas {
+            width: 600px;
+            height: 600px;
+        }
+
+        .sidebar {
+            min-width: 300px;
+            max-width: 350px;
+        }
+
+        .tile-palette {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .tile-btn {
+            aspect-ratio: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            color: #aaa;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .tile-btn canvas {
+            width: 60px;
+            height: 60px;
+        }
+
+        .tile-btn:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .tile-btn.active {
+            border-color: #FFD700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .form-group {
+            margin: 15px 0;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #aaa;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            color: #fff;
+            font-size: 1em;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .tool-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .validation-message {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .validation-error {
+            background: rgba(248, 113, 113, 0.2);
+            border: 2px solid #f87171;
+            color: #f87171;
+        }
+
+        .validation-success {
+            background: rgba(74, 222, 128, 0.2);
+            border: 2px solid #4ade80;
+            color: #4ade80;
+        }
+
+        @media (max-width: 1000px) {
+            .editor-container {
+                flex-direction: column;
+            }
+
+            #editorCanvas {
+                width: 100%;
+                max-width: 600px;
+                height: auto;
+                aspect-ratio: 1;
+            }
+
+            .sidebar {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">← Back to Menu</a>
+
+    <div class="container">
+        <header>
+            <h1>🔧 Level Editor</h1>
+            <p>Create your own wire puzzle levels!</p>
+        </header>
+
+        <div class="editor-container">
+            <div>
+                <canvas id="editorCanvas" width="600" height="600"></canvas>
+                <div class="controls">
+                    <button class="btn btn-secondary" id="clearBtn">🗑️ Clear Grid</button>
+                    <button class="btn btn-secondary" id="fillRandomBtn">🎲 Random Fill</button>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="info-panel">
+                    <h3>Level Settings</h3>
+                    <div class="form-group">
+                        <label for="levelName">Level Name</label>
+                        <input type="text" id="levelName" placeholder="My Awesome Level" value="My Custom Level">
+                    </div>
+                    <div class="form-group">
+                        <label for="difficulty">Difficulty</label>
+                        <select id="difficulty">
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="gridWidth">Grid Width (3-12)</label>
+                        <input type="number" id="gridWidth" min="3" max="12" value="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="gridHeight">Grid Height (3-12)</label>
+                        <input type="number" id="gridHeight" min="3" max="12" value="6">
+                    </div>
+                    <button class="btn btn-secondary" id="resizeBtn" style="width: 100%;">Resize Grid</button>
+                </div>
+
+                <div class="info-panel">
+                    <h3>Tile Palette</h3>
+                    <p style="font-size: 0.9em; color: #aaa; margin-bottom: 10px;">
+                        Click a tile, then click on the grid to place it
+                    </p>
+                    <div class="tile-palette" id="tilePalette"></div>
+                    <div class="tool-buttons">
+                        <button class="btn btn-small btn-danger" id="eraseBtn">🗑️ Erase</button>
+                        <button class="btn btn-small btn-secondary" id="rotateBtn">🔄 Rotate</button>
+                    </div>
+                </div>
+
+                <div class="info-panel">
+                    <h3>Actions</h3>
+                    <div id="validationMsg"></div>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button class="btn btn-primary" id="testBtn" style="width: 100%;">▶️ Test Level</button>
+                        <button class="btn btn-secondary" id="saveBtn" style="width: 100%;">💾 Save Level</button>
+                        <button class="btn btn-secondary" id="exportBtn" style="width: 100%;">📥 Export JSON</button>
+                        <label class="btn btn-secondary" style="width: 100%; text-align: center; cursor: pointer;">
+                            📤 Import JSON
+                            <input type="file" id="importInput" accept=".json" style="display: none;">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="info-panel">
+                    <h3>Instructions</h3>
+                    <ul style="text-align: left; color: #aaa; font-size: 0.9em; line-height: 1.6;">
+                        <li>Place exactly one ⚡ Power Source</li>
+                        <li>Place at least one 💡 Light</li>
+                        <li>Fill grid with wire tiles</li>
+                        <li>Test your level to ensure it's solvable</li>
+                        <li>Save or export to share!</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Renderer } from './js/core/renderer.js';
+        import { Storage } from './js/core/storage.js';
+        import { GameEngine } from './js/core/engine.js';
+
+        const tileTypes = [
+            { type: 'power', name: 'Power' },
+            { type: 'light', name: 'Light' },
+            { type: 'straight', name: 'Straight' },
+            { type: 'corner', name: 'Corner' },
+            { type: 't-junction', name: 'T-Junction' },
+            { type: 'cross', name: 'Cross' },
+            { type: 'empty', name: 'Empty' }
+        ];
+
+        let gridSize = { width: 6, height: 6 };
+        let tiles = [];
+        let renderer = null;
+        let selectedTool = 'place';
+        let selectedTileType = 'straight';
+        let hoveredCell = null;
+        let editingLevelId = null;
+
+        // Check if editing existing level
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get('edit');
+        if (editId) {
+            const level = Storage.getLevel(editId);
+            if (level) {
+                loadLevel(level);
+            }
+        }
+
+        initializeEditor();
+
+        function initializeEditor() {
+            const canvas = document.getElementById('editorCanvas');
+            renderer = new Renderer(canvas, gridSize);
+
+            // Initialize empty grid
+            for (let y = 0; y < gridSize.height; y++) {
+                for (let x = 0; x < gridSize.width; x++) {
+                    tiles.push({ type: 'empty', x, y, rotation: 0 });
+                }
+            }
+
+            createTilePalette();
+            setupEventListeners();
+            render();
+        }
+
+        function createTilePalette() {
+            const palette = document.getElementById('tilePalette');
+            palette.innerHTML = '';
+
+            tileTypes.forEach(({ type, name }) => {
+                const btn = document.createElement('button');
+                btn.className = 'tile-btn';
+                if (type === selectedTileType && selectedTool === 'place') {
+                    btn.classList.add('active');
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = 60;
+                canvas.height = 60;
+                const ctx = canvas.getContext('2d');
+                const tempRenderer = new Renderer(canvas, { width: 1, height: 1 });
+                tempRenderer.drawTile({ type, x: 0, y: 0, rotation: 0, powered: type === 'power' });
+
+                const label = document.createElement('span');
+                label.textContent = name;
+
+                btn.appendChild(canvas);
+                btn.appendChild(label);
+
+                btn.addEventListener('click', () => {
+                    selectedTool = 'place';
+                    selectedTileType = type;
+                    updateToolButtons();
+                });
+
+                palette.appendChild(btn);
+            });
+        }
+
+        function setupEventListeners() {
+            const canvas = document.getElementById('editorCanvas');
+
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                hoveredCell = renderer.screenToGrid(x, y);
+                render();
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                hoveredCell = null;
+                render();
+            });
+
+            canvas.addEventListener('click', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const gridPos = renderer.screenToGrid(x, y);
+                if (gridPos) {
+                    handleGridClick(gridPos.x, gridPos.y);
+                }
+            });
+
+            document.getElementById('eraseBtn').addEventListener('click', () => {
+                selectedTool = 'erase';
+                updateToolButtons();
+            });
+
+            document.getElementById('rotateBtn').addEventListener('click', () => {
+                selectedTool = 'rotate';
+                updateToolButtons();
+            });
+
+            document.getElementById('clearBtn').addEventListener('click', clearGrid);
+            document.getElementById('fillRandomBtn').addEventListener('click', fillRandom);
+            document.getElementById('resizeBtn').addEventListener('click', resizeGrid);
+            document.getElementById('testBtn').addEventListener('click', testLevel);
+            document.getElementById('saveBtn').addEventListener('click', saveLevel);
+            document.getElementById('exportBtn').addEventListener('click', exportLevel);
+            document.getElementById('importInput').addEventListener('change', importLevel);
+        }
+
+        function handleGridClick(x, y) {
+            const tile = tiles.find(t => t.x === x && t.y === y);
+            if (!tile) return;
+
+            if (selectedTool === 'place') {
+                // Remove existing power source if placing a new one
+                if (selectedTileType === 'power') {
+                    tiles.forEach(t => {
+                        if (t.type === 'power' && (t.x !== x || t.y !== y)) {
+                            t.type = 'empty';
+                        }
+                    });
+                }
+
+                tile.type = selectedTileType;
+                tile.rotation = 0;
+                tile.locked = (selectedTileType === 'power' || selectedTileType === 'light');
+            } else if (selectedTool === 'erase') {
+                tile.type = 'empty';
+                tile.rotation = 0;
+                tile.locked = false;
+            } else if (selectedTool === 'rotate') {
+                if (tile.type !== 'empty' && !tile.locked) {
+                    tile.rotation = (tile.rotation + 90) % 360;
+                }
+            }
+
+            render();
+        }
+
+        function updateToolButtons() {
+            createTilePalette();
+            document.getElementById('eraseBtn').style.opacity = selectedTool === 'erase' ? '1' : '0.6';
+            document.getElementById('rotateBtn').style.opacity = selectedTool === 'rotate' ? '1' : '0.6';
+        }
+
+        function render() {
+            renderer.drawGrid(tiles);
+
+            // Highlight hovered cell
+            if (hoveredCell) {
+                renderer.highlightCell(hoveredCell.x, hoveredCell.y);
+            }
+        }
+
+        function clearGrid() {
+            if (confirm('Clear the entire grid?')) {
+                tiles.forEach(tile => {
+                    tile.type = 'empty';
+                    tile.rotation = 0;
+                    tile.locked = false;
+                });
+                render();
+            }
+        }
+
+        function fillRandom() {
+            const wireTypes = ['straight', 'corner', 't-junction', 'cross'];
+            tiles.forEach(tile => {
+                if (tile.type === 'empty') {
+                    tile.type = wireTypes[Math.floor(Math.random() * wireTypes.length)];
+                    tile.rotation = Math.floor(Math.random() * 4) * 90;
+                }
+            });
+            render();
+        }
+
+        function resizeGrid() {
+            const newWidth = parseInt(document.getElementById('gridWidth').value);
+            const newHeight = parseInt(document.getElementById('gridHeight').value);
+
+            if (newWidth < 3 || newWidth > 12 || newHeight < 3 || newHeight > 12) {
+                alert('Grid size must be between 3 and 12');
+                return;
+            }
+
+            gridSize = { width: newWidth, height: newHeight };
+            tiles = [];
+
+            for (let y = 0; y < gridSize.height; y++) {
+                for (let x = 0; x < gridSize.width; x++) {
+                    tiles.push({ type: 'empty', x, y, rotation: 0 });
+                }
+            }
+
+            renderer = new Renderer(document.getElementById('editorCanvas'), gridSize);
+            render();
+        }
+
+        function validateLevel() {
+            const validationMsg = document.getElementById('validationMsg');
+            const errors = [];
+
+            // Check for power source
+            const powerSources = tiles.filter(t => t.type === 'power');
+            if (powerSources.length === 0) {
+                errors.push('Must have one power source');
+            } else if (powerSources.length > 1) {
+                errors.push('Can only have one power source');
+            }
+
+            // Check for lights
+            const lights = tiles.filter(t => t.type === 'light');
+            if (lights.length === 0) {
+                errors.push('Must have at least one light');
+            }
+
+            // Check for some wire tiles
+            const wires = tiles.filter(t => !['empty', 'power', 'light'].includes(t.type));
+            if (wires.length === 0 && gridSize.width > 2) {
+                errors.push('Should have some wire tiles');
+            }
+
+            if (errors.length > 0) {
+                validationMsg.className = 'validation-message validation-error';
+                validationMsg.innerHTML = errors.map(e => `❌ ${e}`).join('<br>');
+                return false;
+            } else {
+                validationMsg.className = 'validation-message validation-success';
+                validationMsg.textContent = '✓ Level is valid!';
+                return true;
+            }
+        }
+
+        function getLevelData() {
+            return {
+                id: editingLevelId || `custom-${Date.now()}`,
+                name: document.getElementById('levelName').value || 'Untitled Level',
+                difficulty: document.getElementById('difficulty').value,
+                gridSize: { ...gridSize },
+                tiles: tiles.filter(t => t.type !== 'empty').map(t => ({
+                    type: t.type,
+                    x: t.x,
+                    y: t.y,
+                    rotation: t.rotation,
+                    locked: t.locked
+                }))
+            };
+        }
+
+        function testLevel() {
+            if (!validateLevel()) {
+                alert('Please fix the validation errors before testing.');
+                return;
+            }
+
+            const level = getLevelData();
+            Storage.setTestLevel(level);
+            window.location.href = 'game.html';
+        }
+
+        function saveLevel() {
+            if (!validateLevel()) {
+                alert('Please fix the validation errors before saving.');
+                return;
+            }
+
+            const level = getLevelData();
+            Storage.saveLevel(level);
+
+            alert(`Level "${level.name}" saved successfully!`);
+            editingLevelId = level.id;
+        }
+
+        function exportLevel() {
+            if (!validateLevel()) {
+                alert('Please fix the validation errors before exporting.');
+                return;
+            }
+
+            const level = getLevelData();
+            Storage.exportLevel(level);
+        }
+
+        async function importLevel(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const level = await Storage.importLevel(file);
+                loadLevel(level);
+                alert(`Level "${level.name}" imported successfully!`);
+            } catch (error) {
+                alert(`Failed to import level: ${error.message}`);
+            }
+
+            e.target.value = '';
+        }
+
+        function loadLevel(level) {
+            editingLevelId = level.id;
+            document.getElementById('levelName').value = level.name;
+            document.getElementById('difficulty').value = level.difficulty || 'easy';
+            document.getElementById('gridWidth').value = level.gridSize.width;
+            document.getElementById('gridHeight').value = level.gridSize.height;
+
+            gridSize = { ...level.gridSize };
+            tiles = [];
+
+            // Initialize empty grid
+            for (let y = 0; y < gridSize.height; y++) {
+                for (let x = 0; x < gridSize.width; x++) {
+                    tiles.push({ type: 'empty', x, y, rotation: 0 });
+                }
+            }
+
+            // Place level tiles
+            level.tiles.forEach(levelTile => {
+                const tile = tiles.find(t => t.x === levelTile.x && t.y === levelTile.y);
+                if (tile) {
+                    tile.type = levelTile.type;
+                    tile.rotation = levelTile.rotation || 0;
+                    tile.locked = levelTile.locked || false;
+                }
+            });
+
+            renderer = new Renderer(document.getElementById('editorCanvas'), gridSize);
+            render();
+            validateLevel();
+        }
+    </script>
+</body>
+</html>

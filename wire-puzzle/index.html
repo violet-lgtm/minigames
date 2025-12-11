@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wire Puzzle - Connect the Power!</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .menu-container {
+            max-width: 800px;
+            text-align: center;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .menu-btn {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.3em;
+        }
+
+        .feature-list {
+            text-align: left;
+            margin: 40px auto;
+            max-width: 500px;
+        }
+
+        .feature-list li {
+            color: #aaa;
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+
+        .feature-list li::marker {
+            content: "⚡ ";
+        }
+
+        .preview-canvas {
+            margin: 30px auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container menu-container">
+        <header>
+            <h1>⚡ Wire Puzzle</h1>
+            <p>Rotate the tiles to connect the power source to the light!</p>
+        </header>
+
+        <canvas id="previewCanvas" class="preview-canvas" width="300" height="300"></canvas>
+
+        <div class="menu-buttons">
+            <a href="game.html" class="btn btn-primary menu-btn">
+                🎮 Play Game
+            </a>
+            <a href="editor.html" class="btn btn-secondary menu-btn">
+                🔧 Level Editor
+            </a>
+            <a href="game.html?mode=custom" class="btn btn-secondary menu-btn">
+                📁 Custom Levels
+            </a>
+        </div>
+
+        <ul class="feature-list">
+            <li>8 built-in levels with increasing difficulty</li>
+            <li>Create your own custom levels</li>
+            <li>Test your levels instantly</li>
+            <li>Export and share levels with friends</li>
+            <li>Track your moves and solve efficiently</li>
+        </ul>
+    </div>
+
+    <script type="module">
+        import { Renderer } from './js/core/renderer.js';
+
+        // Draw an animated demo puzzle on the preview canvas
+        const canvas = document.getElementById('previewCanvas');
+        const renderer = new Renderer(canvas, { width: 3, height: 3 });
+
+        const demoTiles = [
+            { type: 'power', x: 0, y: 1, rotation: 0, powered: true },
+            { type: 'corner', x: 1, y: 1, rotation: 180, powered: true },
+            { type: 'corner', x: 1, y: 0, rotation: 90, powered: true },
+            { type: 'light', x: 2, y: 0, rotation: 0, powered: true }
+        ];
+
+        let animationStep = 0;
+
+        function animate() {
+            animationStep++;
+
+            // Animate power flowing
+            if (animationStep < 30) {
+                demoTiles[0].powered = true;
+                demoTiles[1].powered = false;
+                demoTiles[2].powered = false;
+                demoTiles[3].powered = false;
+            } else if (animationStep < 60) {
+                demoTiles[1].powered = true;
+            } else if (animationStep < 90) {
+                demoTiles[2].powered = true;
+            } else if (animationStep < 120) {
+                demoTiles[3].powered = true;
+            } else {
+                animationStep = 0;
+            }
+
+            renderer.drawGrid(demoTiles);
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

@@ -26,7 +26,7 @@ export class Renderer {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    drawGrid(tiles) {
+    drawGrid(tiles, rails = []) {
         this.clear();
 
         // Draw grid background
@@ -36,9 +36,21 @@ export class Renderer {
             }
         }
 
+        // Draw rails
+        rails.forEach(rail => {
+            this.drawRail(rail);
+        });
+
         // Draw tiles
         tiles.forEach(tile => {
             this.drawTile(tile);
+        });
+
+        // Draw draggable indicators on top
+        tiles.forEach(tile => {
+            if (tile.railId) {
+                this.drawDraggableIndicator(tile);
+            }
         });
     }
 
@@ -235,5 +247,64 @@ export class Renderer {
 
         this.ctx.fillStyle = color;
         this.ctx.fillRect(px, py, this.cellSize, this.cellSize);
+    }
+
+    // Draw a rail track
+    drawRail(rail) {
+        this.ctx.strokeStyle = 'rgba(102, 126, 234, 0.4)';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([5, 5]);
+
+        if (rail.type === 'horizontal') {
+            const y = this.offsetY + rail.y * this.cellSize + this.cellSize / 2;
+            const x1 = this.offsetX + rail.xMin * this.cellSize + this.cellSize / 2;
+            const x2 = this.offsetX + rail.xMax * this.cellSize + this.cellSize / 2;
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(x1, y);
+            this.ctx.lineTo(x2, y);
+            this.ctx.stroke();
+
+            // Draw end caps
+            this.ctx.setLineDash([]);
+            this.ctx.fillStyle = 'rgba(102, 126, 234, 0.6)';
+            this.ctx.fillRect(x1 - 3, y - 8, 6, 16);
+            this.ctx.fillRect(x2 - 3, y - 8, 6, 16);
+        } else if (rail.type === 'vertical') {
+            const x = this.offsetX + rail.x * this.cellSize + this.cellSize / 2;
+            const y1 = this.offsetY + rail.yMin * this.cellSize + this.cellSize / 2;
+            const y2 = this.offsetY + rail.yMax * this.cellSize + this.cellSize / 2;
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, y1);
+            this.ctx.lineTo(x, y2);
+            this.ctx.stroke();
+
+            // Draw end caps
+            this.ctx.setLineDash([]);
+            this.ctx.fillStyle = 'rgba(102, 126, 234, 0.6)';
+            this.ctx.fillRect(x - 8, y1 - 3, 16, 6);
+            this.ctx.fillRect(x - 8, y2 - 3, 16, 6);
+        }
+
+        this.ctx.setLineDash([]);
+    }
+
+    // Draw draggable indicator on tile
+    drawDraggableIndicator(tile) {
+        const px = this.offsetX + tile.x * this.cellSize;
+        const py = this.offsetY + tile.y * this.cellSize;
+
+        // Draw subtle border
+        this.ctx.strokeStyle = 'rgba(102, 126, 234, 0.8)';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeRect(px + 2, py + 2, this.cellSize - 4, this.cellSize - 4);
+
+        // Draw drag icon in corner
+        this.ctx.fillStyle = 'rgba(102, 126, 234, 0.9)';
+        this.ctx.font = 'bold 14px Arial';
+        this.ctx.textAlign = 'right';
+        this.ctx.textBaseline = 'bottom';
+        this.ctx.fillText('⇄', px + this.cellSize - 4, py + this.cellSize - 4);
     }
 }

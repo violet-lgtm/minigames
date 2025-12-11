@@ -4,6 +4,7 @@ export class GameEngine {
         this.level = JSON.parse(JSON.stringify(level)); // Deep clone
         this.gridSize = level.gridSize;
         this.tiles = this.level.tiles;
+        this.rails = this.level.rails || []; // Rails for draggable tiles
         this.moveCount = 0;
         this.won = false;
         this.onUpdate = null; // Callback for UI updates
@@ -190,9 +191,87 @@ export class GameEngine {
     getState() {
         return {
             tiles: this.tiles,
+            rails: this.rails,
             moveCount: this.moveCount,
             won: this.won,
             gridSize: this.gridSize
         };
+    }
+
+    // Rail management methods
+
+    // Get rail by ID
+    getRail(railId) {
+        return this.rails.find(r => r.id === railId);
+    }
+
+    // Get tiles on a specific rail
+    getTilesOnRail(railId) {
+        return this.tiles.filter(t => t.railId === railId);
+    }
+
+    // Check if a position on a rail is valid and empty
+    canMoveTileToPosition(tile, newX, newY) {
+        if (!tile.railId) return false;
+
+        const rail = this.getRail(tile.railId);
+        if (!rail) return false;
+
+        // Check if position is within rail bounds
+        if (rail.type === 'horizontal') {
+            if (newY !== rail.y) return false;
+            if (newX < rail.xMin || newX > rail.xMax) return false;
+        } else if (rail.type === 'vertical') {
+            if (newX !== rail.x) return false;
+            if (newY < rail.yMin || newY > rail.yMax) return false;
+        }
+
+        // Check if position is within grid bounds
+        if (newX < 0 || newX >= this.gridSize.width ||
+            newY < 0 || newY >= this.gridSize.height) {
+            return false;
+        }
+
+        // Check if position is occupied by another tile
+        const occupant = this.getTileAt(newX, newY);
+        return !occupant || occupant === tile;
+    }
+
+    // Move a tile along its rail
+    moveTile(tile, newX, newY) {
+        if (!this.canMoveTileToPosition(tile, newX, newY)) {
+            return false;
+        }
+
+        tile.x = newX;
+        tile.y = newY;
+        this.updatePowerFlow();
+
+        if (this.onUpdate) {
+            this.onUpdate();
+        }
+
+        return true;
+    }
+
+    // Get the constrained position for dragging
+    getConstrainedPosition(tile, targetX, targetY) {
+        if (!tile.railId) return null;
+
+        const rail = this.getRail(tile.railId);
+        if (!rail) return null;
+
+        let constrainedX = tile.x;
+        let constrainedY = tile.y;
+
+        if (rail.type === 'horizontal') {
+            constrainedX = Math.max(rail.xMin, Math.min(rail.xMax, targetX));
+            constrainedY = rail.y;
+        } else if (rail.type === 'vertical') {
+            constrainedX = rail.x;
+            constrainedY = Math.max(rail.yMin, Math.min(rail.yMax, targetY));
+        }
+
+        return { x: constrainedX, y: constrainedY };
     }
 }

@@ -19,6 +19,7 @@ A web-based puzzle game where you rotate tiles with wires to connect a power sou
 - **Win Detection**: Automatic celebration when you solve a puzzle
 - **Reset Function**: Start over anytime
 - **Custom Level Support**: Play user-created levels
+- **Draggable Tiles**: Tiles on rails can be dragged instead of rotated
 
 ### Level Editor (`editor.html`)
 - **Visual Editor**: Click to place tiles on a grid
@@ -34,7 +35,10 @@ A web-based puzzle game where you rotate tiles with wires to connect a power sou
   - Place Mode: Click to add tiles
   - Rotate Mode: Click to rotate existing tiles
   - Erase Mode: Remove tiles
+  - Add Rail Mode: Click-drag to create rails for draggable tiles
+  - Assign Rail Mode: Click tiles to assign them to rails
 - **Grid Customization**: Adjust grid size (3x3 to 12x12)
+- **Rail System**: Create horizontal or vertical rails for draggable tiles
 - **Test Function**: Play your level instantly
 - **Save/Load**: Store levels in browser localStorage
 - **Import/Export**: Share levels as JSON files
@@ -102,6 +106,42 @@ wire-puzzle/
 6. Click **Test Level** to play it immediately
 7. Click **Save Level** to store it locally
 8. Click **Export JSON** to share with others
+
+## 🛤️ Rail/Track System (Advanced Feature)
+
+The rail system allows you to create tiles that can be dragged instead of rotated, adding a new dimension to puzzle mechanics.
+
+### Creating Rails in the Editor:
+
+1. **Click "🛤️ Add Rail" tool**
+2. **Click and drag** on the grid:
+   - Drag horizontally → Creates horizontal rail
+   - Drag vertically → Creates vertical rail
+3. Rails appear as dashed blue lines with end caps
+
+### Assigning Tiles to Rails:
+
+1. **Place your tiles first** (power, lights, wires, etc.)
+2. **Click "📍 Assign Rail" tool**
+3. **Click on tiles** that are positioned on rails
+   - Tiles get a blue border and ⇄ indicator
+   - Click again to unassign
+
+### In Gameplay:
+
+- **Draggable tiles** show a blue border with ⇄ icon
+- **Click and drag** to move them along their rail
+- Tiles can only move horizontally or vertically based on rail type
+- **Power recalculates** in real-time as you drag
+- **Other tiles** can still be rotated normally
+
+### Design Tips:
+
+- Use draggable tiles for dynamic puzzles
+- Combine static and draggable tiles for complexity
+- Rails can span multiple cells (e.g., 5-cell horizontal rail)
+- Multiple tiles can share the same rail
+- Great for "sliding block" style puzzles
 
 ## 🚀 Testing Workflow
 

@@ -186,6 +186,8 @@
                     <div class="tool-buttons">
                         <button class="btn btn-small btn-danger" id="eraseBtn">🗑️ Erase</button>
                         <button class="btn btn-small btn-secondary" id="rotateBtn">🔄 Rotate</button>
+                        <button class="btn btn-small btn-secondary" id="railBtn">🛤️ Add Rail</button>
+                        <button class="btn btn-small btn-secondary" id="assignRailBtn">📍 Assign Rail</button>
                     </div>
                 </div>
 
@@ -210,6 +212,7 @@
                         <li>Place at least one 💡 Light</li>
                         <li>Fill grid with wire tiles</li>
                         <li>Use Rotate tool to orient all tiles (including power/light)</li>
+                        <li><strong>Optional:</strong> Add Rail by clicking-dragging, then Assign Rail to make tiles draggable</li>
                         <li>Test your level to ensure it's solvable</li>
                         <li>Save or export to share!</li>
                     </ul>
@@ -236,11 +239,14 @@
 
         let gridSize = { width: 6, height: 6 };
         let tiles = [];
+        let rails = [];
         let renderer = null;
         let selectedTool = 'place';
         let selectedTileType = 'straight';
         let hoveredCell = null;
         let editingLevelId = null;
+        let railIdCounter = 0;
+        let railCreationStart = null; // For creating rails by click-drag
 
         // Check if editing existing level
         const urlParams = new URLSearchParams(window.location.search);
@@ -317,7 +323,59 @@
 
             canvas.addEventListener('mouseleave', () => {
                 hoveredCell = null;
+                railCreationStart = null;
                 render();
+            });
+
+            canvas.addEventListener('mousedown', (e) => {
+                if (selectedTool === 'rail') {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const gridPos = renderer.screenToGrid(x, y);
+                    if (gridPos) {
+                        railCreationStart = gridPos;
+                        render();
+                    }
+                }
+            });
+
+            canvas.addEventListener('mouseup', (e) => {
+                if (selectedTool === 'rail' && railCreationStart) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const gridPos = renderer.screenToGrid(x, y);
+
+                    if (gridPos) {
+                        // Create rail if it's horizontal or vertical
+                        const isHorizontal = railCreationStart.y === gridPos.y;
+                        const isVertical = railCreationStart.x === gridPos.x;
+
+                        if (isHorizontal && railCreationStart.x !== gridPos.x) {
+                            const rail = {
+                                id: `rail-${railIdCounter++}`,
+                                type: 'horizontal',
+                                y: railCreationStart.y,
+                                xMin: Math.min(railCreationStart.x, gridPos.x),
+                                xMax: Math.max(railCreationStart.x, gridPos.x)
+                            };
+                            rails.push(rail);
+                        } else if (isVertical && railCreationStart.y !== gridPos.y) {
+                            const rail = {
+                                id: `rail-${railIdCounter++}`,
+                                type: 'vertical',
+                                x: railCreationStart.x,
+                                yMin: Math.min(railCreationStart.y, gridPos.y),
+                                yMax: Math.max(railCreationStart.y, gridPos.y)
+                            };
+                            rails.push(rail);
+                        }
+                    }
+
+                    railCreationStart = null;
+                    render();
+                }
             });
 
             canvas.addEventListener('click', (e) => {
@@ -338,6 +396,16 @@
 
             document.getElementById('rotateBtn').addEventListener('click', () => {
                 selectedTool = 'rotate';
+                updateToolButtons();
+            });
+
+            document.getElementById('railBtn').addEventListener('click', () => {
+                selectedTool = 'rail';
+                updateToolButtons();
+            });
+
+            document.getElementById('assignRailBtn').addEventListener('click', () => {
+                selectedTool = 'assign-rail';
                 updateToolButtons();
             });
 
@@ -371,9 +439,32 @@
                 tile.type = 'empty';
                 tile.rotation = 0;
                 tile.locked = false;
+                delete tile.railId; // Remove rail assignment
             } else if (selectedTool === 'rotate') {
                 if (tile.type !== 'empty') {
                     tile.rotation = (tile.rotation + 90) % 360;
+                }
+            } else if (selectedTool === 'assign-rail') {
+                // Find rail at this position
+                const rail = rails.find(r => {
+                    if (r.type === 'horizontal') {
+                        return r.y === y && x >= r.xMin && x <= r.xMax;
+                    } else if (r.type === 'vertical') {
+                        return r.x === x && y >= r.yMin && y <= r.yMax;
+                    }
+                    return false;
+                });
+
+                if (rail && tile.type !== 'empty') {
+                    if (tile.railId === rail.id) {
+                        // Toggle off
+                        delete tile.railId;
+                    } else {
+                        // Assign to rail
+                        tile.railId = rail.id;
+                    }
+                } else if (!rail) {
+                    alert('No rail at this position. Create a rail first with the "Add Rail" tool.');
                 }
             }
 
@@ -384,24 +475,62 @@
             createTilePalette();
             document.getElementById('eraseBtn').style.opacity = selectedTool === 'erase' ? '1' : '0.6';
             document.getElementById('rotateBtn').style.opacity = selectedTool === 'rotate' ? '1' : '0.6';
+            document.getElementById('railBtn').style.opacity = selectedTool === 'rail' ? '1' : '0.6';
+            document.getElementById('assignRailBtn').style.opacity = selectedTool === 'assign-rail' ? '1' : '0.6';
         }
 
         function render() {
-            renderer.drawGrid(tiles);
+            renderer.drawGrid(tiles, rails);
 
             // Highlight hovered cell
             if (hoveredCell) {
                 renderer.highlightCell(hoveredCell.x, hoveredCell.y);
             }
+
+            // Highlight rail creation preview
+            if (selectedTool === 'rail' && railCreationStart && hoveredCell) {
+                const isHorizontal = railCreationStart.y === hoveredCell.y;
+                const isVertical = railCreationStart.x === hoveredCell.x;
+
+                if (isHorizontal || isVertical) {
+                    // Draw preview rail
+                    const ctx = renderer.ctx;
+                    ctx.strokeStyle = 'rgba(102, 126, 234, 0.6)';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+
+                    if (isHorizontal) {
+                        const y = renderer.offsetY + railCreationStart.y * renderer.cellSize + renderer.cellSize / 2;
+                        const x1 = renderer.offsetX + Math.min(railCreationStart.x, hoveredCell.x) * renderer.cellSize + renderer.cellSize / 2;
+                        const x2 = renderer.offsetX + Math.max(railCreationStart.x, hoveredCell.x) * renderer.cellSize + renderer.cellSize / 2;
+                        ctx.beginPath();
+                        ctx.moveTo(x1, y);
+                        ctx.lineTo(x2, y);
+                        ctx.stroke();
+                    } else if (isVertical) {
+                        const x = renderer.offsetX + railCreationStart.x * renderer.cellSize + renderer.cellSize / 2;
+                        const y1 = renderer.offsetY + Math.min(railCreationStart.y, hoveredCell.y) * renderer.cellSize + renderer.cellSize / 2;
+                        const y2 = renderer.offsetY + Math.max(railCreationStart.y, hoveredCell.y) * renderer.cellSize + renderer.cellSize / 2;
+                        ctx.beginPath();
+                        ctx.moveTo(x, y1);
+                        ctx.lineTo(x, y2);
+                        ctx.stroke();
+                    }
+
+                    ctx.setLineDash([]);
+                }
+            }
         }
 
         function clearGrid() {
-            if (confirm('Clear the entire grid?')) {
+            if (confirm('Clear the entire grid including rails?')) {
                 tiles.forEach(tile => {
                     tile.type = 'empty';
                     tile.rotation = 0;
                     tile.locked = false;
+                    delete tile.railId;
                 });
+                rails = [];
                 render();
             }
         }
@@ -428,6 +557,7 @@
 
             gridSize = { width: newWidth, height: newHeight };
             tiles = [];
+            rails = []; // Clear rails when resizing
 
             for (let y = 0; y < gridSize.height; y++) {
                 for (let x = 0; x < gridSize.width; x++) {
@@ -480,13 +610,20 @@
                 name: document.getElementById('levelName').value || 'Untitled Level',
                 difficulty: document.getElementById('difficulty').value,
                 gridSize: { ...gridSize },
-                tiles: tiles.filter(t => t.type !== 'empty').map(t => ({
-                    type: t.type,
-                    x: t.x,
-                    y: t.y,
-                    rotation: t.rotation,
-                    locked: t.locked
-                }))
+                tiles: tiles.filter(t => t.type !== 'empty').map(t => {
+                    const tileData = {
+                        type: t.type,
+                        x: t.x,
+                        y: t.y,
+                        rotation: t.rotation,
+                        locked: t.locked
+                    };
+                    if (t.railId) {
+                        tileData.railId = t.railId;
+                    }
+                    return tileData;
+                }),
+                rails: rails.map(r => ({ ...r }))
             };
         }
 
@@ -548,6 +685,13 @@
 
             gridSize = { ...level.gridSize };
             tiles = [];
+            rails = level.rails ? level.rails.map(r => ({ ...r })) : [];
+
+            // Update rail ID counter
+            if (rails.length > 0) {
+                const maxId = Math.max(...rails.map(r => parseInt(r.id.split('-')[1]) || 0));
+                railIdCounter = maxId + 1;
+            }
 
             // Initialize empty grid
             for (let y = 0; y < gridSize.height; y++) {
@@ -563,6 +707,9 @@
                     tile.type = levelTile.type;
                     tile.rotation = levelTile.rotation || 0;
                     tile.locked = levelTile.locked || false;
+                    if (levelTile.railId) {
+                        tile.railId = levelTile.railId;
+                    }
                 }
             });
 

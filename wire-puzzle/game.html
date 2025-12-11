@@ -271,14 +271,78 @@
             engine.onUpdate = updateUI;
 
             // Handle canvas clicks
-            canvas.addEventListener('click', (e) => {
+            // Drag handling for tiles on rails
+            let draggedTile = null;
+            let isDragging = false;
+
+            canvas.addEventListener('mousedown', (e) => {
                 const rect = canvas.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
 
                 const gridPos = renderer.screenToGrid(x, y);
                 if (gridPos) {
-                    engine.rotateTile(gridPos.x, gridPos.y);
+                    const tile = engine.getTileAt(gridPos.x, gridPos.y);
+                    if (tile && tile.railId) {
+                        // Start dragging
+                        draggedTile = tile;
+                        isDragging = true;
+                        canvas.style.cursor = 'grabbing';
+                    }
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const gridPos = renderer.screenToGrid(x, y);
+
+                if (isDragging && draggedTile && gridPos) {
+                    // Get constrained position along rail
+                    const newPos = engine.getConstrainedPosition(draggedTile, gridPos.x, gridPos.y);
+                    if (newPos && (newPos.x !== draggedTile.x || newPos.y !== draggedTile.y)) {
+                        engine.moveTile(draggedTile, newPos.x, newPos.y);
+                    }
+                } else if (!isDragging && gridPos) {
+                    // Update cursor for hovering over draggable tiles
+                    const tile = engine.getTileAt(gridPos.x, gridPos.y);
+                    canvas.style.cursor = (tile && tile.railId) ? 'grab' : 'pointer';
+                }
+            });
+
+            canvas.addEventListener('mouseup', (e) => {
+                if (isDragging) {
+                    isDragging = false;
+                    draggedTile = null;
+                    canvas.style.cursor = 'pointer';
+                }
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    draggedTile = null;
+                    canvas.style.cursor = 'pointer';
+                }
+            });
+
+            // Click handler for rotating non-draggable tiles
+            canvas.addEventListener('click', (e) => {
+                if (isDragging || draggedTile) return; // Don't rotate if we just dragged
+
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                const gridPos = renderer.screenToGrid(x, y);
+                if (gridPos) {
+                    const tile = engine.getTileAt(gridPos.x, gridPos.y);
+                    if (!tile || !tile.railId) {
+                        // Only rotate if tile is not on a rail
+                        engine.rotateTile(gridPos.x, gridPos.y);
+                    }
                 }
             });
 
@@ -287,7 +351,7 @@
 
         function updateUI() {
             const state = engine.getState();
-            renderer.drawGrid(state.tiles);
+            renderer.drawGrid(state.tiles, state.rails);
             document.getElementById('moveCount').textContent = state.moveCount;
             document.getElementById('status').textContent = state.won ? '✓ Complete!' : 'Solving...';
 

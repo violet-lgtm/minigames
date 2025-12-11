@@ -85,6 +85,9 @@ export class Renderer {
             case 'cross':
                 this.drawCross(tile.powered);
                 break;
+            case 'bridge':
+                this.drawBridge(tile.powered);
+                break;
         }
 
         this.ctx.restore();
@@ -189,6 +192,27 @@ export class Renderer {
         this.ctx.lineTo(this.cellSize / 2, 0);
         this.ctx.moveTo(0, -this.cellSize / 2);
         this.ctx.lineTo(0, this.cellSize / 2);
+        this.ctx.stroke();
+    }
+
+    drawBridge(powered) {
+        const gap = this.cellSize * 0.15;
+
+        this.ctx.strokeStyle = powered ? '#FFD700' : '#666';
+        this.ctx.lineWidth = 4;
+
+        // Draw vertical wire with gap (goes "under")
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, -this.cellSize / 2);
+        this.ctx.lineTo(0, -gap);
+        this.ctx.moveTo(0, gap);
+        this.ctx.lineTo(0, this.cellSize / 2);
+        this.ctx.stroke();
+
+        // Draw horizontal wire on top (continuous)
+        this.ctx.beginPath();
+        this.ctx.moveTo(-this.cellSize / 2, 0);
+        this.ctx.lineTo(this.cellSize / 2, 0);
         this.ctx.stroke();
     }
 

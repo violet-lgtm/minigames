@@ -209,6 +209,7 @@
                         <li>Place exactly one ⚡ Power Source</li>
                         <li>Place at least one 💡 Light</li>
                         <li>Fill grid with wire tiles</li>
+                        <li>Use Rotate tool to orient all tiles (including power/light)</li>
                         <li>Test your level to ensure it's solvable</li>
                         <li>Save or export to share!</li>
                     </ul>
@@ -370,7 +371,7 @@
                 tile.rotation = 0;
                 tile.locked = false;
             } else if (selectedTool === 'rotate') {
-                if (tile.type !== 'empty' && !tile.locked) {
+                if (tile.type !== 'empty') {
                     tile.rotation = (tile.rotation + 90) % 360;
                 }
             }

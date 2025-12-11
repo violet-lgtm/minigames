@@ -21,28 +21,6 @@ A brain-teasing puzzle game where you rotate tiles with wires to connect a power
 
 **Play:** [Wire Puzzle](wire-puzzle/index.html)
 
-## 🚀 GitHub Pages Setup
-
-This repository is configured to automatically deploy to GitHub Pages. To enable it:
-
-1. **Go to Repository Settings**
-   - Navigate to your repository on GitHub
-   - Click on "Settings" tab
-
-2. **Enable GitHub Pages**
-   - In the left sidebar, click "Pages"
-   - Under "Build and deployment":
-     - Source: Select "GitHub Actions"
-   - Save the settings
-
-3. **Merge to Main Branch**
-   - The workflow runs automatically on pushes to `main` or `master` branch
-   - You can also manually trigger it from the "Actions" tab
-
-4. **Access Your Site**
-   - After deployment completes, your games will be live at:
-   - `https://violet-lgtm.github.io/minigames/`
-
 ### Workflow Details
 
 The `.github/workflows/deploy-pages.yml` workflow:

@@ -119,27 +119,67 @@ export class GameEngine {
     // Update power flow from power source
     updatePowerFlow() {
         // Reset all powered states
-        this.tiles.forEach(t => t.powered = false);
+        this.tiles.forEach(t => {
+            t.powered = false;
+            t.powerDirections = new Set(); // Track which directions power is flowing through the tile
+        });
 
         // Find power source
         const powerSource = this.tiles.find(t => t.type === 'power');
         if (!powerSource) return;
 
-        // BFS to propagate power
-        const queue = [powerSource];
-        const visited = new Set();
-        visited.add(powerSource);
+        // BFS to propagate power, tracking direction of power flow
+        const queue = [{ tile: powerSource, fromDirection: null }];
+        const visited = new Map(); // Map of tile -> Set of directions power entered from
+        visited.set(powerSource, new Set([null]));
         powerSource.powered = true;
 
         while (queue.length > 0) {
-            const current = queue.shift();
-            const neighbors = this.getConnectedNeighbors(current);
+            const { tile: current, fromDirection } = queue.shift();
+            const connections = this.getTileConnections(current.type, current.rotation);
 
-            neighbors.forEach(neighbor => {
+            // For each connection direction
+            connections.forEach(direction => {
+                // For bridge tiles, only allow straight-through connections
+                if (current.type === 'bridge') {
+                    const oppositeDir = this.getOppositeDirection(fromDirection);
+                    // Skip if this isn't the straight-through direction
+                    if (fromDirection !== null && direction !== oppositeDir) {
+                        return;
+                    }
+                }
+
+                const neighbor = this.getNeighbor(current, direction);
+                if (!neighbor) return;
+
+                // Check if they're connected
+                if (!this.areConnected(current, neighbor)) return;
+
+                // Track which direction power is entering the neighbor from
+                const enterDirection = this.getOppositeDirection(direction);
+
                 if (!visited.has(neighbor)) {
-                    visited.add(neighbor);
-                    neighbor.powered = true;
-                    queue.push(neighbor);
+                    visited.set(neighbor, new Set());
+                }
+
+                // For bridge tiles, only allow each direction pair once
+                if (neighbor.type === 'bridge') {
+                    const dirSet = visited.get(neighbor);
+                    if (!dirSet.has(enterDirection)) {
+                        dirSet.add(enterDirection);
+                        neighbor.powered = true;
+                        neighbor.powerDirections.add(enterDirection);
+                        queue.push({ tile: neighbor, fromDirection: enterDirection });
+                    }
+                } else {
+                    // For non-bridge tiles, standard behavior
+                    const dirSet = visited.get(neighbor);
+                    if (!dirSet.has(enterDirection)) {
+                        dirSet.add(enterDirection);
+                        neighbor.powered = true;
+                        neighbor.powerDirections.add(enterDirection);
+                        queue.push({ tile: neighbor, fromDirection: enterDirection });
+                    }
                 }
             });
         }

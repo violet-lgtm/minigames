@@ -212,24 +212,18 @@ export class Renderer {
 
         this.ctx.lineWidth = 4;
 
-        // Determine which wires are actually powered by checking connections
+        // Determine which wires are actually powered by checking power flow directions
         let horizontalPowered = false;
         let verticalPowered = false;
 
-        if (powered && tile && engine) {
-            // Check if horizontal wire is part of the power path
-            const leftNeighbor = engine.getNeighbor(tile, 'left');
-            const rightNeighbor = engine.getNeighbor(tile, 'right');
-            if ((leftNeighbor && leftNeighbor.powered && engine.areConnected(tile, leftNeighbor)) ||
-                (rightNeighbor && rightNeighbor.powered && engine.areConnected(tile, rightNeighbor))) {
+        if (powered && tile && tile.powerDirections) {
+            // Check if power entered from horizontal directions (left or right)
+            if (tile.powerDirections.has('left') || tile.powerDirections.has('right')) {
                 horizontalPowered = true;
             }
 
-            // Check if vertical wire is part of the power path
-            const topNeighbor = engine.getNeighbor(tile, 'top');
-            const bottomNeighbor = engine.getNeighbor(tile, 'bottom');
-            if ((topNeighbor && topNeighbor.powered && engine.areConnected(tile, topNeighbor)) ||
-                (bottomNeighbor && bottomNeighbor.powered && engine.areConnected(tile, bottomNeighbor))) {
+            // Check if power entered from vertical directions (top or bottom)
+            if (tile.powerDirections.has('top') || tile.powerDirections.has('bottom')) {
                 verticalPowered = true;
             }
         }

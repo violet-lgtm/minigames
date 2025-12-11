@@ -351,7 +351,7 @@
 
         function updateUI() {
             const state = engine.getState();
-            renderer.drawGrid(state.tiles, state.rails);
+            renderer.drawGrid(state.tiles, state.rails, engine);
             document.getElementById('moveCount').textContent = state.moveCount;
             document.getElementById('status').textContent = state.won ? '✓ Complete!' : 'Solving...';
 

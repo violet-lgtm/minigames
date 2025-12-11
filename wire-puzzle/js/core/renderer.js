@@ -26,7 +26,7 @@ export class Renderer {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    drawGrid(tiles, rails = []) {
+    drawGrid(tiles, rails = [], engine = null) {
         this.clear();
 
         // Draw grid background
@@ -43,7 +43,7 @@ export class Renderer {
 
         // Draw tiles
         tiles.forEach(tile => {
-            this.drawTile(tile);
+            this.drawTile(tile, engine);
         });
 
         // Draw draggable indicators on top
@@ -63,7 +63,7 @@ export class Renderer {
         this.ctx.strokeRect(px, py, this.cellSize, this.cellSize);
     }
 
-    drawTile(tile) {
+    drawTile(tile, engine = null) {
         const px = this.offsetX + tile.x * this.cellSize;
         const py = this.offsetY + tile.y * this.cellSize;
 
@@ -98,7 +98,7 @@ export class Renderer {
                 this.drawCross(tile.powered);
                 break;
             case 'bridge':
-                this.drawBridge(tile.powered);
+                this.drawBridge(tile.powered, tile, engine);
                 break;
         }
 
@@ -207,13 +207,35 @@ export class Renderer {
         this.ctx.stroke();
     }
 
-    drawBridge(powered) {
+    drawBridge(powered, tile, engine) {
         const gap = this.cellSize * 0.15;
 
-        this.ctx.strokeStyle = powered ? '#FFD700' : '#666';
         this.ctx.lineWidth = 4;
 
+        // Determine which wires are actually powered by checking connections
+        let horizontalPowered = false;
+        let verticalPowered = false;
+
+        if (powered && tile && engine) {
+            // Check if horizontal wire is part of the power path
+            const leftNeighbor = engine.getNeighbor(tile, 'left');
+            const rightNeighbor = engine.getNeighbor(tile, 'right');
+            if ((leftNeighbor && leftNeighbor.powered && engine.areConnected(tile, leftNeighbor)) ||
+                (rightNeighbor && rightNeighbor.powered && engine.areConnected(tile, rightNeighbor))) {
+                horizontalPowered = true;
+            }
+
+            // Check if vertical wire is part of the power path
+            const topNeighbor = engine.getNeighbor(tile, 'top');
+            const bottomNeighbor = engine.getNeighbor(tile, 'bottom');
+            if ((topNeighbor && topNeighbor.powered && engine.areConnected(tile, topNeighbor)) ||
+                (bottomNeighbor && bottomNeighbor.powered && engine.areConnected(tile, bottomNeighbor))) {
+                verticalPowered = true;
+            }
+        }
+
         // Draw vertical wire with gap (goes "under")
+        this.ctx.strokeStyle = verticalPowered ? '#FFD700' : '#666';
         this.ctx.beginPath();
         this.ctx.moveTo(0, -this.cellSize / 2);
         this.ctx.lineTo(0, -gap);
@@ -222,6 +244,7 @@ export class Renderer {
         this.ctx.stroke();
 
         // Draw horizontal wire on top (continuous)
+        this.ctx.strokeStyle = horizontalPowered ? '#FFD700' : '#666';
         this.ctx.beginPath();
         this.ctx.moveTo(-this.cellSize / 2, 0);
         this.ctx.lineTo(this.cellSize / 2, 0);

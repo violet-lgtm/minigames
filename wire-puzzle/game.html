@@ -115,6 +115,7 @@
                 <canvas id="gameCanvas" width="600" height="600"></canvas>
                 <div class="controls">
                     <button class="btn btn-secondary" id="resetBtn">🔄 Reset</button>
+                    <button class="btn btn-secondary" id="shareLevelBtn" style="display: none;">🔗 Share</button>
                     <button class="btn btn-secondary" id="backBtn">← Back to Levels</button>
                 </div>
             </div>
@@ -172,15 +173,33 @@
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get('mode') || 'builtin';
+        const levelParam = urlParams.get('level');
         const testLevel = Storage.getTestLevel();
 
         let levels = [];
         let currentLevelIndex = -1;
+        let currentLevel = null; // Store current level for sharing
         let engine = null;
         let renderer = null;
 
         // Initialize
-        if (testLevel) {
+        if (levelParam) {
+            // Load level from URL parameter
+            try {
+                const levelJson = atob(levelParam);
+                const level = JSON.parse(levelJson);
+                levels = [level];
+                currentLevelIndex = 0;
+                document.getElementById('pageTitle').textContent = 'Shared Level';
+                document.getElementById('backBtn').textContent = '← Home';
+                startGame(level);
+            } catch (error) {
+                console.error('Failed to load level from URL:', error);
+                alert('Invalid level link. Please check the URL and try again.');
+                levels = builtInLevels;
+                showLevelSelector();
+            }
+        } else if (testLevel) {
             // Test mode - play test level immediately
             levels = [testLevel];
             currentLevelIndex = 0;
@@ -260,9 +279,18 @@
         }
 
         function startGame(level) {
+            currentLevel = level; // Store for sharing
             document.getElementById('levelSelector').style.display = 'none';
             document.getElementById('gameArea').style.display = 'flex';
             document.getElementById('levelName').textContent = level.name;
+
+            // Show share button for shared levels and custom levels
+            const shareBtn = document.getElementById('shareLevelBtn');
+            if (levelParam || mode === 'custom') {
+                shareBtn.style.display = 'inline-block';
+            } else {
+                shareBtn.style.display = 'none';
+            }
 
             const canvas = document.getElementById('gameCanvas');
             renderer = new Renderer(canvas, level.gridSize);
@@ -380,6 +408,34 @@
             } else {
                 showLevelSelector();
             }
+        });
+
+        document.getElementById('shareLevelBtn').addEventListener('click', () => {
+            if (!currentLevel) {
+                alert('No level to share!');
+                return;
+            }
+
+            const levelJson = JSON.stringify(currentLevel);
+            const encoded = btoa(levelJson);
+            const baseUrl = window.location.origin + window.location.pathname;
+            const shareUrl = `${baseUrl}?level=${encoded}`;
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                alert('Share link copied to clipboard!\n\nAnyone with this link can play this level.');
+            }).catch(err => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = shareUrl;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('Share link copied to clipboard!\n\nAnyone with this link can play this level.');
+            });
         });
 
         document.getElementById('nextLevelBtn').addEventListener('click', () => {

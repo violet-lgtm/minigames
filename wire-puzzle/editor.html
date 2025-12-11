@@ -198,6 +198,7 @@
                         <button class="btn btn-primary" id="testBtn" style="width: 100%;">▶️ Test Level</button>
                         <button class="btn btn-secondary" id="saveBtn" style="width: 100%;">💾 Save Level</button>
                         <button class="btn btn-secondary" id="exportBtn" style="width: 100%;">📥 Export JSON</button>
+                        <button class="btn btn-secondary" id="shareLinkBtn" style="width: 100%;">🔗 Copy Share Link</button>
                         <label class="btn btn-secondary" style="width: 100%; text-align: center; cursor: pointer;">
                             📤 Import JSON
                             <input type="file" id="importInput" accept=".json" style="display: none;">
@@ -415,6 +416,7 @@
             document.getElementById('testBtn').addEventListener('click', testLevel);
             document.getElementById('saveBtn').addEventListener('click', saveLevel);
             document.getElementById('exportBtn').addEventListener('click', exportLevel);
+            document.getElementById('shareLinkBtn').addEventListener('click', copyShareLink);
             document.getElementById('importInput').addEventListener('change', importLevel);
         }
 
@@ -659,6 +661,37 @@
 
             const level = getLevelData();
             Storage.exportLevel(level);
+        }
+
+        function copyShareLink() {
+            if (!validateLevel()) {
+                alert('Please fix the validation errors before sharing.');
+                return;
+            }
+
+            const level = getLevelData();
+            const levelJson = JSON.stringify(level);
+            const encoded = btoa(levelJson);
+
+            // Get the base URL (same origin as current page)
+            const baseUrl = window.location.origin + window.location.pathname.replace('editor.html', 'game.html');
+            const shareUrl = `${baseUrl}?level=${encoded}`;
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                alert('Share link copied to clipboard!\n\nAnyone with this link can play your level.');
+            }).catch(err => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = shareUrl;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('Share link copied to clipboard!\n\nAnyone with this link can play your level.');
+            });
         }
 
         async function importLevel(e) {

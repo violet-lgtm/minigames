@@ -32,7 +32,7 @@ export class GameEngine {
             'corner': ['top', 'right'],
             't-junction': ['left', 'top', 'right'],
             'cross': ['top', 'right', 'bottom', 'left'],
-            'bridge': ['left', 'right']
+            'bridge': ['top', 'right', 'bottom', 'left'] // Connects all directions but only straight through
         };
 
         let connections = baseConnections[type] || [];

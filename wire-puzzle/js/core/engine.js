@@ -1,24 +1,15 @@
 // Wire Puzzle Game Engine
 export class GameEngine {
     constructor(level) {
-        this.level = JSON.parse(JSON.stringify(level)); // Deep clone
+        this.originalLevel = JSON.parse(JSON.stringify(level)); // Deep clone for reset
         this.gridSize = level.gridSize;
-        this.tiles = this.level.tiles;
-        this.rails = this.level.rails || []; // Rails for draggable tiles
+        this.tiles = JSON.parse(JSON.stringify(level.tiles)); // Working copy
+        this.rails = level.rails ? JSON.parse(JSON.stringify(level.rails)) : []; // Rails for draggable tiles
         this.moveCount = 0;
         this.won = false;
         this.onUpdate = null; // Callback for UI updates
 
         this.initializeTiles();
-        // Store initial tile state for reset (using Map for direct tile reference)
-        this.initialTileState = new Map();
-        this.tiles.forEach(tile => {
-            this.initialTileState.set(tile, {
-                x: tile.x,
-                y: tile.y,
-                rotation: tile.rotation
-            });
-        });
         this.updatePowerFlow();
     }
 
@@ -222,15 +213,9 @@ export class GameEngine {
 
     // Reset level
     reset() {
-        // Restore tiles to their initial positions and rotations
-        this.tiles.forEach(tile => {
-            const initialState = this.initialTileState.get(tile);
-            if (initialState) {
-                tile.x = initialState.x;
-                tile.y = initialState.y;
-                tile.rotation = initialState.rotation;
-            }
-        });
+        // Restore tiles to their original state from level editor
+        this.tiles = JSON.parse(JSON.stringify(this.originalLevel.tiles));
+        this.initializeTiles();
         this.moveCount = 0;
         this.won = false;
         this.updatePowerFlow();

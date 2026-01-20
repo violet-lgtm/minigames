@@ -8,6 +8,7 @@ export class GameEngine {
         this.moveCount = 0;
         this.won = false;
         this.onUpdate = null; // Callback for UI updates
+        this.lastRotationTime = 0; // Cooldown for rotation
 
         this.initializeTiles();
         this.updatePowerFlow();
@@ -200,8 +201,15 @@ export class GameEngine {
         const tile = this.getTileAt(x, y);
         if (!tile || tile.locked) return false;
 
+        // Check cooldown (200ms between rotations)
+        const now = Date.now();
+        if (now - this.lastRotationTime < 200) {
+            return false;
+        }
+
         tile.rotation = (tile.rotation + 90) % 360;
         this.moveCount++;
+        this.lastRotationTime = now;
         this.updatePowerFlow();
 
         if (this.onUpdate) {

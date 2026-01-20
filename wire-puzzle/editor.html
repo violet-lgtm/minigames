@@ -433,16 +433,30 @@
                     railCreationStart = null;
                     render();
                     e.preventDefault();
+                } else {
+                    // For non-rail tools, treat touchend as a tap
+                    if (e.type === 'touchend') {
+                        const coords = getEventCoords(e);
+                        const gridPos = renderer.screenToGrid(coords.x, coords.y);
+                        if (gridPos) {
+                            handleGridClick(gridPos.x, gridPos.y);
+                            e.preventDefault();
+                        }
+                    }
                 }
             }
 
-            // Unified tap/click handler
+            // Unified tap/click handler (for mouse only, touch uses handleEnd)
             function handleTap(e) {
+                // Skip if this is a synthesized click from touch
+                if (e.type === 'click' && e.detail === 0) {
+                    return;
+                }
+
                 const coords = getEventCoords(e);
                 const gridPos = renderer.screenToGrid(coords.x, coords.y);
                 if (gridPos) {
                     handleGridClick(gridPos.x, gridPos.y);
-                    e.preventDefault();
                 }
             }
 

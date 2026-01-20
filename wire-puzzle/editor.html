@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Wire Puzzle - Level Editor</title>
     <link rel="stylesheet" href="css/common.css">
     <style>
@@ -17,6 +19,8 @@
         #editorCanvas {
             width: 600px;
             height: 600px;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .sidebar {
@@ -129,6 +133,40 @@
 
             .sidebar {
                 max-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .btn {
+                min-height: 44px;
+                font-size: 14px;
+            }
+
+            .tile-palette {
+                gap: 8px;
+            }
+
+            .tile-btn {
+                min-height: 44px;
+                padding: 8px;
+            }
+
+            .info-panel {
+                margin: 10px 0;
+                padding: 15px;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            input, select {
+                min-height: 44px;
+                font-size: 16px;
             }
         }
     </style>
@@ -314,39 +352,52 @@
         function setupEventListeners() {
             const canvas = document.getElementById('editorCanvas');
 
-            canvas.addEventListener('mousemove', (e) => {
+            // Helper function to get coordinates from mouse or touch event
+            function getEventCoords(e) {
                 const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                hoveredCell = renderer.screenToGrid(x, y);
-                render();
-            });
+                if (e.touches && e.touches.length > 0) {
+                    return {
+                        x: e.touches[0].clientX - rect.left,
+                        y: e.touches[0].clientY - rect.top
+                    };
+                } else if (e.changedTouches && e.changedTouches.length > 0) {
+                    return {
+                        x: e.changedTouches[0].clientX - rect.left,
+                        y: e.changedTouches[0].clientY - rect.top
+                    };
+                } else {
+                    return {
+                        x: e.clientX - rect.left,
+                        y: e.clientY - rect.top
+                    };
+                }
+            }
 
-            canvas.addEventListener('mouseleave', () => {
-                hoveredCell = null;
-                railCreationStart = null;
+            // Unified move handler
+            function handleMove(e) {
+                const coords = getEventCoords(e);
+                hoveredCell = renderer.screenToGrid(coords.x, coords.y);
                 render();
-            });
+            }
 
-            canvas.addEventListener('mousedown', (e) => {
+            // Unified start handler
+            function handleStart(e) {
                 if (selectedTool === 'rail') {
-                    const rect = canvas.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    const gridPos = renderer.screenToGrid(x, y);
+                    const coords = getEventCoords(e);
+                    const gridPos = renderer.screenToGrid(coords.x, coords.y);
                     if (gridPos) {
                         railCreationStart = gridPos;
                         render();
+                        e.preventDefault();
                     }
                 }
-            });
+            }
 
-            canvas.addEventListener('mouseup', (e) => {
+            // Unified end handler
+            function handleEnd(e) {
                 if (selectedTool === 'rail' && railCreationStart) {
-                    const rect = canvas.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    const gridPos = renderer.screenToGrid(x, y);
+                    const coords = getEventCoords(e);
+                    const gridPos = renderer.screenToGrid(coords.x, coords.y);
 
                     if (gridPos) {
                         // Create rail if it's horizontal or vertical
@@ -376,19 +427,40 @@
 
                     railCreationStart = null;
                     render();
+                    e.preventDefault();
                 }
-            });
+            }
 
-            canvas.addEventListener('click', (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-
-                const gridPos = renderer.screenToGrid(x, y);
+            // Unified tap/click handler
+            function handleTap(e) {
+                const coords = getEventCoords(e);
+                const gridPos = renderer.screenToGrid(coords.x, coords.y);
                 if (gridPos) {
                     handleGridClick(gridPos.x, gridPos.y);
+                    e.preventDefault();
                 }
+            }
+
+            // Mouse events
+            canvas.addEventListener('mousemove', handleMove);
+            canvas.addEventListener('mouseleave', () => {
+                hoveredCell = null;
+                railCreationStart = null;
+                render();
             });
+            canvas.addEventListener('mousedown', handleStart);
+            canvas.addEventListener('mouseup', handleEnd);
+            canvas.addEventListener('click', handleTap);
+
+            // Touch events
+            canvas.addEventListener('touchmove', handleMove, { passive: false });
+            canvas.addEventListener('touchstart', handleStart, { passive: false });
+            canvas.addEventListener('touchend', handleEnd, { passive: false });
+            canvas.addEventListener('touchcancel', () => {
+                hoveredCell = null;
+                railCreationStart = null;
+                render();
+            }, { passive: false });
 
             document.getElementById('eraseBtn').addEventListener('click', () => {
                 selectedTool = 'erase';

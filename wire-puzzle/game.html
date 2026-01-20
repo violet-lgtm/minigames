@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Wire Puzzle - Play</title>
     <link rel="stylesheet" href="css/common.css">
     <style>
@@ -23,6 +25,8 @@
         #gameCanvas {
             width: 600px;
             height: 600px;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .level-list {
@@ -93,6 +97,33 @@
                 max-width: 600px;
                 height: auto;
                 aspect-ratio: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .controls {
+                flex-wrap: wrap;
+            }
+
+            .btn {
+                min-height: 44px;
+                font-size: 14px;
+            }
+
+            .level-item {
+                padding: 12px;
+            }
+
+            .info-panel {
+                margin: 10px 0;
+            }
+
+            header h1 {
+                font-size: 1.8em;
             }
         }
     </style>
@@ -302,13 +333,33 @@
             // Drag handling for tiles on rails
             let draggedTile = null;
             let isDragging = false;
+            let lastTapTime = 0;
 
-            canvas.addEventListener('mousedown', (e) => {
+            // Helper function to get coordinates from mouse or touch event
+            function getEventCoords(e) {
                 const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
+                if (e.touches && e.touches.length > 0) {
+                    return {
+                        x: e.touches[0].clientX - rect.left,
+                        y: e.touches[0].clientY - rect.top
+                    };
+                } else if (e.changedTouches && e.changedTouches.length > 0) {
+                    return {
+                        x: e.changedTouches[0].clientX - rect.left,
+                        y: e.changedTouches[0].clientY - rect.top
+                    };
+                } else {
+                    return {
+                        x: e.clientX - rect.left,
+                        y: e.clientY - rect.top
+                    };
+                }
+            }
 
-                const gridPos = renderer.screenToGrid(x, y);
+            // Unified start handler for mouse and touch
+            function handleStart(e) {
+                const coords = getEventCoords(e);
+                const gridPos = renderer.screenToGrid(coords.x, coords.y);
                 if (gridPos) {
                     const tile = engine.getTileAt(gridPos.x, gridPos.y);
                     if (tile && tile.railId) {
@@ -316,16 +367,15 @@
                         draggedTile = tile;
                         isDragging = true;
                         canvas.style.cursor = 'grabbing';
+                        e.preventDefault();
                     }
                 }
-            });
+            }
 
-            canvas.addEventListener('mousemove', (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-
-                const gridPos = renderer.screenToGrid(x, y);
+            // Unified move handler for mouse and touch
+            function handleMove(e) {
+                const coords = getEventCoords(e);
+                const gridPos = renderer.screenToGrid(coords.x, coords.y);
 
                 if (isDragging && draggedTile && gridPos) {
                     // Get constrained position along rail
@@ -333,46 +383,57 @@
                     if (newPos && (newPos.x !== draggedTile.x || newPos.y !== draggedTile.y)) {
                         engine.moveTile(draggedTile, newPos.x, newPos.y);
                     }
-                } else if (!isDragging && gridPos) {
-                    // Update cursor for hovering over draggable tiles
+                    e.preventDefault();
+                } else if (!isDragging && gridPos && !e.touches) {
+                    // Update cursor for hovering over draggable tiles (mouse only)
                     const tile = engine.getTileAt(gridPos.x, gridPos.y);
                     canvas.style.cursor = (tile && tile.railId) ? 'grab' : 'pointer';
                 }
-            });
+            }
 
-            canvas.addEventListener('mouseup', (e) => {
+            // Unified end handler for mouse and touch
+            function handleEnd(e) {
                 if (isDragging) {
                     isDragging = false;
                     draggedTile = null;
                     canvas.style.cursor = 'pointer';
+                    e.preventDefault();
                 }
-            });
+            }
 
-            canvas.addEventListener('mouseleave', () => {
-                if (isDragging) {
-                    isDragging = false;
-                    draggedTile = null;
-                    canvas.style.cursor = 'pointer';
-                }
-            });
+            // Tap handler for rotation
+            function handleTap(e) {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTapTime;
 
-            // Click handler for rotating non-draggable tiles
-            canvas.addEventListener('click', (e) => {
                 if (isDragging || draggedTile) return; // Don't rotate if we just dragged
 
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-
-                const gridPos = renderer.screenToGrid(x, y);
+                const coords = getEventCoords(e);
+                const gridPos = renderer.screenToGrid(coords.x, coords.y);
                 if (gridPos) {
                     const tile = engine.getTileAt(gridPos.x, gridPos.y);
                     if (!tile || !tile.railId) {
                         // Only rotate if tile is not on a rail
                         engine.rotateTile(gridPos.x, gridPos.y);
+                        e.preventDefault();
                     }
                 }
-            });
+
+                lastTapTime = currentTime;
+            }
+
+            // Mouse events
+            canvas.addEventListener('mousedown', handleStart);
+            canvas.addEventListener('mousemove', handleMove);
+            canvas.addEventListener('mouseup', handleEnd);
+            canvas.addEventListener('mouseleave', handleEnd);
+            canvas.addEventListener('click', handleTap);
+
+            // Touch events
+            canvas.addEventListener('touchstart', handleStart, { passive: false });
+            canvas.addEventListener('touchmove', handleMove, { passive: false });
+            canvas.addEventListener('touchend', handleEnd, { passive: false });
+            canvas.addEventListener('touchcancel', handleEnd, { passive: false });
 
             updateUI();
         }

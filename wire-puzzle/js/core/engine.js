@@ -10,6 +10,15 @@ export class GameEngine {
         this.onUpdate = null; // Callback for UI updates
 
         this.initializeTiles();
+        // Store initial tile state for reset (using Map for direct tile reference)
+        this.initialTileState = new Map();
+        this.tiles.forEach(tile => {
+            this.initialTileState.set(tile, {
+                x: tile.x,
+                y: tile.y,
+                rotation: tile.rotation
+            });
+        });
         this.updatePowerFlow();
     }
 
@@ -213,9 +222,13 @@ export class GameEngine {
 
     // Reset level
     reset() {
+        // Restore tiles to their initial positions and rotations
         this.tiles.forEach(tile => {
-            if (!tile.locked) {
-                tile.rotation = Math.floor(Math.random() * 4) * 90;
+            const initialState = this.initialTileState.get(tile);
+            if (initialState) {
+                tile.x = initialState.x;
+                tile.y = initialState.y;
+                tile.rotation = initialState.rotation;
             }
         });
         this.moveCount = 0;

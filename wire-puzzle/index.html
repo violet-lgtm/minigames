@@ -81,6 +81,10 @@
 
     <script type="module">
         import { Renderer } from './js/core/renderer.js';
+        import { ThemeManager } from './js/core/themes.js';
+
+        // Initialize theme
+        const themeManager = new ThemeManager();
 
         // Draw an animated demo puzzle on the preview canvas
         const canvas = document.getElementById('previewCanvas');

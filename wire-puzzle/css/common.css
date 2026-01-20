@@ -1,4 +1,23 @@
 /* Wire Puzzle - Common Styles */
+
+/* CSS Variables for theming */
+:root {
+    --bg-gradient-start: #1a1a2e;
+    --bg-gradient-end: #16213e;
+    --primary-color: #FFD700;
+    --primary-gradient-start: #FFD700;
+    --primary-gradient-end: #FFA500;
+    --secondary-gradient-start: #667eea;
+    --secondary-gradient-end: #764ba2;
+    --accent-color: #667eea;
+    --text-primary: #fff;
+    --text-secondary: #aaa;
+    --canvas-border: #667eea;
+    --canvas-bg: #0f0f1e;
+    --panel-bg: rgba(255, 255, 255, 0.05);
+    --panel-border: rgba(255, 255, 255, 0.1);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -7,8 +26,8 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+    color: var(--text-primary);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -31,7 +50,7 @@ header {
 h1 {
     font-size: 3em;
     margin-bottom: 10px;
-    background: linear-gradient(45deg, #FFD700, #FFA500);
+    background: linear-gradient(45deg, var(--primary-gradient-start), var(--primary-gradient-end));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -40,19 +59,19 @@ h1 {
 h2 {
     font-size: 1.8em;
     margin-bottom: 20px;
-    color: #FFD700;
+    color: var(--primary-color);
 }
 
 p {
-    color: #aaa;
+    color: var(--text-secondary);
     margin-bottom: 30px;
     font-size: 1.1em;
 }
 
 /* Buttons */
 .btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--secondary-gradient-start) 0%, var(--secondary-gradient-end) 100%);
+    color: var(--text-primary);
     border: none;
     padding: 15px 30px;
     font-size: 1.1em;
@@ -74,13 +93,13 @@ p {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
     color: #000;
     font-weight: bold;
 }
 
 .btn-secondary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--secondary-gradient-start) 0%, var(--secondary-gradient-end) 100%);
 }
 
 .btn-danger {
@@ -94,17 +113,17 @@ p {
 
 /* Canvas */
 canvas {
-    border: 3px solid #667eea;
+    border: 3px solid var(--canvas-border);
     border-radius: 10px;
-    background: #0f0f1e;
+    background: var(--canvas-bg);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     cursor: pointer;
 }
 
 /* Info panels */
 .info-panel {
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: var(--panel-bg);
+    border: 2px solid var(--panel-border);
     border-radius: 10px;
     padding: 20px;
     margin: 20px 0;
@@ -122,7 +141,7 @@ canvas {
 }
 
 .stat-label {
-    color: #aaa;
+    color: var(--text-secondary);
     font-size: 0.9em;
     margin-bottom: 5px;
 }
@@ -130,7 +149,7 @@ canvas {
 .stat-value {
     font-size: 2em;
     font-weight: bold;
-    color: #FFD700;
+    color: var(--primary-color);
 }
 
 /* Grid layout */
@@ -150,8 +169,8 @@ canvas {
 
 /* Card */
 .card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: var(--panel-bg);
+    border: 2px solid var(--panel-border);
     border-radius: 10px;
     padding: 20px;
     transition: transform 0.2s, border-color 0.2s;
@@ -160,16 +179,16 @@ canvas {
 
 .card:hover {
     transform: translateY(-5px);
-    border-color: #667eea;
+    border-color: var(--accent-color);
 }
 
 .card h3 {
-    color: #FFD700;
+    color: var(--primary-color);
     margin-bottom: 10px;
 }
 
 .card p {
-    color: #aaa;
+    color: var(--text-secondary);
     font-size: 0.9em;
     margin: 0;
 }
@@ -227,8 +246,8 @@ canvas {
 }
 
 .modal-content {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border: 3px solid #667eea;
+    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+    border: 3px solid var(--accent-color);
     border-radius: 15px;
     padding: 40px;
     max-width: 500px;
@@ -250,7 +269,7 @@ canvas {
 /* Win animation */
 .win-message {
     font-size: 2.5em;
-    color: #FFD700;
+    color: var(--primary-color);
     margin-bottom: 20px;
     animation: pulse 1s infinite;
 }
@@ -269,7 +288,7 @@ canvas {
     position: absolute;
     top: 20px;
     left: 20px;
-    color: #FFD700;
+    color: var(--primary-color);
     text-decoration: none;
     font-size: 1.2em;
     display: flex;

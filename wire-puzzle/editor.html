@@ -256,6 +256,13 @@
                         <li>Save or export to share!</li>
                     </ul>
                 </div>
+
+                <div class="info-panel">
+                    <h3>🎨 Theme</h3>
+                    <select id="themeSelector" style="width: 100%; padding: 10px; font-size: 1em; border-radius: 5px; background: rgba(0,0,0,0.3); color: #fff; border: 2px solid rgba(255,255,255,0.2);">
+                        <!-- Populated by JavaScript -->
+                    </select>
+                </div>
             </div>
         </div>
     </div>
@@ -264,6 +271,7 @@
         import { Renderer } from './js/core/renderer.js';
         import { Storage } from './js/core/storage.js';
         import { GameEngine } from './js/core/engine.js';
+        import { ThemeManager } from './js/core/themes.js';
 
         const tileTypes = [
             { type: 'power', name: 'Power' },
@@ -297,6 +305,10 @@
             }
         }
 
+        // Initialize theme manager
+        const themeManager = new ThemeManager();
+        initializeThemeSelector();
+
         initializeEditor();
 
         function initializeEditor() {
@@ -313,6 +325,25 @@
             createTilePalette();
             setupEventListeners();
             render();
+        }
+
+        function initializeThemeSelector() {
+            const selector = document.getElementById('themeSelector');
+            const themes = themeManager.getThemeList();
+
+            themes.forEach(theme => {
+                const option = document.createElement('option');
+                option.value = theme.id;
+                option.textContent = theme.name;
+                if (theme.id === themeManager.currentTheme) {
+                    option.selected = true;
+                }
+                selector.appendChild(option);
+            });
+
+            selector.addEventListener('change', (e) => {
+                themeManager.applyTheme(e.target.value);
+            });
         }
 
         function createTilePalette() {

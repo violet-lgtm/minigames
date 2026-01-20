@@ -200,6 +200,10 @@
         import { Renderer } from './js/core/renderer.js';
         import { Storage } from './js/core/storage.js';
         import { builtInLevels } from './js/core/levels.js';
+        import { ThemeManager } from './js/core/themes.js';
+
+        // Initialize theme
+        const themeManager = new ThemeManager();
 
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);

@@ -39,9 +39,11 @@ export const LEVELS = [
   {
     id: 1,
     name: 'Sunrise',
+    seed: 'sunrise-v1',
     difficulty: 'Easy',
-    cols: 2,
-    rows: 2,
+    imageW: 340,
+    imageH: 340,
+    numPoints: 3,
     drawImage(ctx, w, h) {
       // Sky
       const sky = ctx.createLinearGradient(0, 0, 0, h * 0.72);
@@ -93,9 +95,11 @@ export const LEVELS = [
   {
     id: 2,
     name: 'Starry Night',
+    seed: 'starry-v1',
     difficulty: 'Easy',
-    cols: 2,
-    rows: 2,
+    imageW: 340,
+    imageH: 340,
+    numPoints: 3,
     drawImage(ctx, w, h) {
       // Night sky gradient
       const sky = ctx.createLinearGradient(0, 0, 0, h * 0.78);
@@ -146,9 +150,11 @@ export const LEVELS = [
   {
     id: 3,
     name: 'Tropical Beach',
+    seed: 'beach-v1',
     difficulty: 'Medium',
-    cols: 3,
-    rows: 2,
+    imageW: 420,
+    imageH: 300,
+    numPoints: 5,
     drawImage(ctx, w, h) {
       // Sky
       const sky = ctx.createLinearGradient(0, 0, 0, h * 0.52);
@@ -218,9 +224,11 @@ export const LEVELS = [
   {
     id: 4,
     name: 'Mountain Lake',
+    seed: 'mountain-v1',
     difficulty: 'Medium',
-    cols: 2,
-    rows: 3,
+    imageW: 300,
+    imageH: 420,
+    numPoints: 5,
     drawImage(ctx, w, h) {
       const mid = h * 0.5; // water line
 
@@ -318,9 +326,11 @@ export const LEVELS = [
   {
     id: 5,
     name: 'Autumn Forest',
+    seed: 'forest-v1',
     difficulty: 'Hard',
-    cols: 3,
-    rows: 3,
+    imageW: 400,
+    imageH: 400,
+    numPoints: 8,
     drawImage(ctx, w, h) {
       // Sky (barely visible through canopy)
       ctx.fillStyle = '#b3cde0';

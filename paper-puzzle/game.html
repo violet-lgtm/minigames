@@ -62,15 +62,6 @@
       canvas.height = Math.max(ch, 300);
     }
 
-    // ── Piece size computation ─────────────────────────────────────────────────
-
-    function computePieceSize(cols, rows) {
-      // Leave 30% of canvas on each axis for the scattered pieces to land
-      const usableW = canvas.width  * 0.6;
-      const usableH = canvas.height * 0.65;
-      return Math.floor(Math.min(usableW / cols, usableH / rows));
-    }
-
     // ── State ──────────────────────────────────────────────────────────────────
 
     let engine   = null;
@@ -86,21 +77,22 @@
 
       sizeCanvas();
 
-      const ps = computePieceSize(def.cols, def.rows);
+      // Scale the image to fill ~90% of the canvas while preserving aspect ratio
+      const sc = Math.min(
+        canvas.width  * 0.90 / def.imageW,
+        canvas.height * 0.88 / def.imageH,
+      );
       const level = {
         ...def,
-        pieceW: ps,
-        pieceH: ps,
-        seed: def.name,
+        imageW: Math.round(def.imageW * sc),
+        imageH: Math.round(def.imageH * sc),
       };
 
       engine = new PaperPuzzleEngine(level);
 
       // Centre the puzzle on the canvas
-      const totalW = def.cols * ps;
-      const totalH = def.rows * ps;
-      const puzzleX = Math.round((canvas.width  - totalW) / 2);
-      const puzzleY = Math.round((canvas.height - totalH) / 2);
+      const puzzleX = Math.round((canvas.width  - level.imageW) / 2);
+      const puzzleY = Math.round((canvas.height - level.imageH) / 2);
 
       engine.setTargets(puzzleX, puzzleY);
       engine.pile(canvas.width, canvas.height);

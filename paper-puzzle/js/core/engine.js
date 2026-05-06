@@ -185,10 +185,23 @@ export class PaperPuzzleEngine {
   getPieceAt(x, y) {
     let best = null;
     for (const p of this.pieces) {
+      // Quick bounding-circle reject before the exact test
       const dx = x - p.x, dy = y - p.y;
-      if (dx * dx + dy * dy < p.boundR2) {
-        if (!best || p.z > best.z) best = p;
+      if (dx * dx + dy * dy >= p.boundR2) continue;
+
+      // Transform click into piece-local space (undo translation + rotation)
+      let lx = dx, ly = dy;
+      if (p.rotation) {
+        const cos = Math.cos(-p.rotation);
+        const sin = Math.sin(-p.rotation);
+        lx = dx * cos - dy * sin;
+        ly = dx * sin + dy * cos;
       }
+
+      // Exact point-in-triangle test using piece-local vertices (centroid = 0,0)
+      const [a, b, c] = p.verts.map(v => ({ x: v.x - p.cx, y: v.y - p.cy }));
+      const pt = { x: lx, y: ly };
+      if (ptInTri(pt, a, b, c) && (!best || p.z > best.z)) best = p;
     }
     return best;
   }

@@ -1,0 +1,293 @@
+/* Paper Puzzle — Common Styles */
+
+:root {
+  --bg-start:   #1a1a2e;
+  --bg-end:     #16213e;
+  --gold-start: #FFD700;
+  --gold-end:   #FFA500;
+  --purple-start: #667eea;
+  --purple-end:   #764ba2;
+  --text:       #ffffff;
+  --text-muted: #aaaaaa;
+  --panel-bg:   rgba(255,255,255,0.06);
+  --panel-border: rgba(255,255,255,0.12);
+  --btn-radius: 8px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--purple-start) 0%, var(--purple-end) 100%);
+  color: var(--text);
+  border: none;
+  padding: 13px 26px;
+  font-size: 1em;
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold-start) 0%, var(--gold-end) 100%);
+  color: #222;
+}
+
+.btn-sm {
+  padding: 8px 18px;
+  font-size: 0.9em;
+}
+
+.btn-ghost {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+}
+
+/* ── Nav bar ─────────────────────────────────────────────────────── */
+
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 14px;
+  z-index: 100;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.nav-title {
+  font-size: 1.25em;
+  font-weight: 700;
+  background: linear-gradient(45deg, var(--gold-start), var(--gold-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  flex: 1;
+  text-align: center;
+}
+
+/* ── Index page ──────────────────────────────────────────────────── */
+
+.page-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.hero {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.hero h1 {
+  font-size: 3em;
+  margin-bottom: 12px;
+  background: linear-gradient(45deg, var(--gold-start), var(--gold-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero p {
+  font-size: 1.15em;
+  color: var(--text-muted);
+  max-width: 520px;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  max-width: 700px;
+  width: 100%;
+  margin-bottom: 36px;
+}
+
+.feature-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 22px 18px;
+  text-align: center;
+}
+
+.feature-icon {
+  font-size: 2.4em;
+  margin-bottom: 10px;
+}
+
+.feature-card h3 {
+  font-size: 1em;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.feature-card p {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.cta-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Game page ───────────────────────────────────────────────────── */
+
+.game-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.game-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.level-select {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text);
+  padding: 7px 12px;
+  border-radius: var(--btn-radius);
+  font-size: 0.92em;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.level-select:focus {
+  outline: none;
+  border-color: var(--purple-start);
+}
+
+.canvas-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  overflow: hidden;
+}
+
+#gameCanvas {
+  display: block;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+  cursor: grab;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+#gameCanvas:active {
+  cursor: grabbing;
+}
+
+/* ── Win overlay ─────────────────────────────────────────────────── */
+
+.win-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  animation: fadeIn 0.4s ease;
+}
+
+.win-overlay.hidden {
+  display: none;
+}
+
+.win-card {
+  background: linear-gradient(135deg, #1e1e3e 0%, #2a1a5e 100%);
+  border: 2px solid var(--gold-start);
+  border-radius: 18px;
+  padding: 44px 52px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.win-card h2 {
+  font-size: 2.4em;
+  margin-bottom: 8px;
+  background: linear-gradient(45deg, var(--gold-start), var(--gold-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.win-card p {
+  color: var(--text-muted);
+  margin-bottom: 28px;
+  font-size: 1.05em;
+}
+
+.win-btns {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .hero h1 { font-size: 2em; }
+  .nav-title { font-size: 1em; }
+  .win-card { padding: 28px 24px; }
+  .win-card h2 { font-size: 1.8em; }
+}

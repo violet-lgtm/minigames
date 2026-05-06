@@ -1,4 +1,13 @@
 // PaperPuzzleEngine — pure game logic, no rendering
+//
+// Each grid cell is split diagonally into two triangular pieces:
+//   Triangle A — upper-right triangle (TL, TR, BR vertices of cell)
+//   Triangle B — lower-left  triangle (TL, BR, BL vertices of cell)
+//
+// Three families of cuts are generated:
+//   hCuts[row][col] — horizontal tear between row `row` and row `row+1`
+//   vCuts[col][row] — vertical   tear between col `col` and col `col+1`
+//   dCuts[row][col] — diagonal   tear across cell (col, row), TL→BR
 
 function seededRng(seed) {
   let s = 0;
@@ -17,8 +26,9 @@ function seededRng(seed) {
 export class PaperPuzzleEngine {
   constructor(level) {
     this.level = level; // { name, cols, rows, pieceW, pieceH, seed, drawImage }
-    this.hCuts = [];    // hCuts[row][col] — cut between row `row` and row `row+1`
-    this.vCuts = [];    // vCuts[col][row] — cut between col `col` and col `col+1`
+    this.hCuts = [];
+    this.vCuts = [];
+    this.dCuts = [];
     this.pieces = [];
     this.draggedPiece = null;
     this.dragOffsetX = 0;
@@ -32,6 +42,8 @@ export class PaperPuzzleEngine {
 
   _buildCuts() {
     const { cols, rows, pieceW, pieceH, seed } = this.level;
+    const diagLen = Math.sqrt(pieceW * pieceW + pieceH * pieceH);
+
     for (let r = 0; r < rows - 1; r++) {
       this.hCuts[r] = [];
       for (let c = 0; c < cols; c++) {
@@ -44,36 +56,66 @@ export class PaperPuzzleEngine {
         this.vCuts[c][r] = this._edge(pieceH, `${seed}_v${c}_${r}`);
       }
     }
+    // Diagonal cuts — one per cell, always present
+    for (let r = 0; r < rows; r++) {
+      this.dCuts[r] = [];
+      for (let c = 0; c < cols; c++) {
+        this.dCuts[r][c] = this._edge(diagLen, `${seed}_d${r}_${c}`);
+      }
+    }
   }
 
-  // Returns array of {t:0..1, off} defining a torn edge along `length` pixels.
-  // t=0 and t=1 always have off=0 so corners meet cleanly.
+  // Returns {t, off}[] for a torn edge of `length` px.
+  // t=0 and t=1 are pinned at off=0 so corners meet cleanly.
   _edge(length, seedStr) {
     const rng = seededRng(seedStr);
-    // Dense points + high amplitude + minimal smoothing = very jagged tears
     const n = Math.max(10, Math.floor(length / 6));
     const pts = [{ t: 0, off: 0 }];
     for (let i = 1; i < n; i++) {
       pts.push({ t: i / n, off: (rng() - 0.5) * 58 });
     }
     pts.push({ t: 1, off: 0 });
-    // Single smoothing pass — preserves jaggedness while removing single-pixel spikes
+    // Single smoothing pass — keeps jaggedness while removing single spikes
     for (let i = 1; i < pts.length - 1; i++) {
       pts[i].off = (pts[i - 1].off + pts[i].off * 2 + pts[i + 1].off) / 4;
     }
     return pts;
   }
 
+  // Two triangular pieces per grid cell.
+  // Piece centroid is used as the drag/snap anchor point.
+  //
+  // Cell-local coordinate system (cell centre = origin, cell spans ±pw/2, ±ph/2):
+  //   Triangle A centroid in cell-local: ( pw/6, -ph/6)
+  //   Triangle B centroid in cell-local: (-pw/6,  ph/6)
+  //
+  // imgOffX/Y = centroid distance from puzzle top-left, used for image rendering.
   _buildPieces() {
-    const { cols, rows } = this.level;
+    const { cols, rows, pieceW: pw, pieceH: ph } = this.level;
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
+        // Triangle A — upper-right (TL, TR, BR)
         this.pieces.push({
-          id: r * cols + c,
-          gridCol: c,
-          gridRow: r,
+          id: (r * cols + c) * 2,
+          type: 'A',
+          cellCol: c, cellRow: r,
           x: 0, y: 0,
           targetX: 0, targetY: 0,
+          imgOffX: c * pw + 2 * pw / 3,
+          imgOffY: r * ph + ph / 3,
+          rotation: 0,
+          snapped: false,
+          z: this._zCount++,
+        });
+        // Triangle B — lower-left (TL, BR, BL)
+        this.pieces.push({
+          id: (r * cols + c) * 2 + 1,
+          type: 'B',
+          cellCol: c, cellRow: r,
+          x: 0, y: 0,
+          targetX: 0, targetY: 0,
+          imgOffX: c * pw + pw / 3,
+          imgOffY: r * ph + 2 * ph / 3,
           rotation: 0,
           snapped: false,
           z: this._zCount++,
@@ -83,20 +125,18 @@ export class PaperPuzzleEngine {
   }
 
   setTargets(puzzleX, puzzleY) {
-    const { pieceW, pieceH } = this.level;
     for (const p of this.pieces) {
-      p.targetX = puzzleX + p.gridCol * pieceW + pieceW / 2;
-      p.targetY = puzzleY + p.gridRow * pieceH + pieceH / 2;
+      p.targetX = puzzleX + p.imgOffX;
+      p.targetY = puzzleY + p.imgOffY;
     }
   }
 
-  // Stack all pieces in a small pile at the canvas centre with random rotations.
+  // Stack all pieces in a small pile at the canvas centre.
   pile(canvasW, canvasH) {
     const { pieceW, pieceH, seed } = this.level;
     const rng = seededRng(seed + '_pile' + Date.now());
     const cx = canvasW / 2;
     const cy = canvasH / 2;
-    // Spread radius: pieces offset by up to ~12% of their size from the pile centre
     const spreadX = pieceW * 0.12;
     const spreadY = pieceH * 0.12;
     const maxRot  = Math.PI / 7; // ±~26°
@@ -109,9 +149,9 @@ export class PaperPuzzleEngine {
     }
   }
 
+  // Hit-test: circumscribed-circle radius works at any rotation angle.
   getPieceAt(x, y) {
     const { pieceW, pieceH } = this.level;
-    // Use circumscribed-circle radius so hit-testing works at any rotation
     const r2 = (pieceW * pieceW + pieceH * pieceH) / 4;
     let best = null;
     for (const p of this.pieces) {

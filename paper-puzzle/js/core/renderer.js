@@ -29,14 +29,17 @@ export class PaperPuzzleRenderer {
     this._drawBackground();
     this._drawGuide();
 
-    const sorted = [...engine.pieces].sort((a, b) => a.z - b.z);
+    // Snapped pieces render first (bottom), then unsnapped by z order
+    const sorted = [...engine.pieces].sort((a, b) => {
+      if (a.snapped !== b.snapped) return a.snapped ? -1 : 1;
+      return a.z - b.z;
+    });
     for (const piece of sorted) {
       if (piece === engine.draggedPiece) continue;
       this._drawPiece(piece, false, timestamp);
     }
 
     if (engine.draggedPiece) {
-      this._drawSnapHint(engine.draggedPiece);
       this._drawPiece(engine.draggedPiece, true, timestamp);
     }
 

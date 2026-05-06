@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paper Puzzle – Play</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="game-layout">
+
+    <!-- Nav bar -->
+    <nav class="nav">
+      <a href="./" class="btn btn-sm btn-ghost">← Back</a>
+      <span class="nav-title">Paper Puzzle</span>
+      <div class="game-controls">
+        <select id="levelSelect" class="level-select" aria-label="Choose level"></select>
+        <button id="resetBtn" class="btn btn-sm">Reset</button>
+      </div>
+    </nav>
+
+    <!-- Canvas -->
+    <div class="canvas-area" style="padding-top:72px">
+      <canvas id="gameCanvas"></canvas>
+    </div>
+
+  </div>
+
+  <!-- Win overlay -->
+  <div id="winOverlay" class="win-overlay hidden">
+    <div class="win-card">
+      <h2>🎉 Puzzle Complete!</h2>
+      <p id="winMsg">All pieces are in place!</p>
+      <div class="win-btns">
+        <button id="nextLevelBtn" class="btn btn-gold">Next Level →</button>
+        <button id="playAgainBtn" class="btn">Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { PaperPuzzleEngine } from './js/core/engine.js';
+    import { PaperPuzzleRenderer } from './js/core/renderer.js';
+    import { LEVELS } from './js/core/levels.js';
+
+    // ── Canvas & sizing ────────────────────────────────────────────────────────
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Pick a canvas size that fills the usable window area
+    function sizeCanvas() {
+      const area = canvas.parentElement;
+      const maxW = area.clientWidth  - 24;
+      const maxH = area.clientHeight - 24;
+      // Maintain 16:10 aspect up to these limits
+      const aspect = 16 / 10;
+      let cw = maxW;
+      let ch = Math.round(cw / aspect);
+      if (ch > maxH) { ch = maxH; cw = Math.round(ch * aspect); }
+      canvas.width  = Math.max(cw, 400);
+      canvas.height = Math.max(ch, 300);
+    }
+
+    // ── Piece size computation ─────────────────────────────────────────────────
+
+    function computePieceSize(cols, rows) {
+      // Leave 30% of canvas on each axis for the scattered pieces to land
+      const usableW = canvas.width  * 0.6;
+      const usableH = canvas.height * 0.65;
+      return Math.floor(Math.min(usableW / cols, usableH / rows));
+    }
+
+    // ── State ──────────────────────────────────────────────────────────────────
+
+    let engine   = null;
+    let renderer = null;
+    let levelIdx = 0;
+    let rafId    = null;
+
+    // ── Level setup ────────────────────────────────────────────────────────────
+
+    function loadLevel(idx) {
+      levelIdx = idx;
+      const def = LEVELS[idx];
+
+      sizeCanvas();
+
+      const ps = computePieceSize(def.cols, def.rows);
+      const level = {
+        ...def,
+        pieceW: ps,
+        pieceH: ps,
+        seed: def.name,
+      };
+
+      engine = new PaperPuzzleEngine(level);
+
+      // Centre the puzzle on the canvas
+      const totalW = def.cols * ps;
+      const totalH = def.rows * ps;
+      const puzzleX = Math.round((canvas.width  - totalW) / 2);
+      const puzzleY = Math.round((canvas.height - totalH) / 2);
+
+      engine.setTargets(puzzleX, puzzleY);
+      engine.scatter(canvas.width, canvas.height);
+
+      renderer = new PaperPuzzleRenderer(canvas, engine);
+      renderer.setPuzzleOrigin(puzzleX, puzzleY);
+
+      document.getElementById('winOverlay').classList.add('hidden');
+      document.getElementById('nextLevelBtn').style.display =
+        idx < LEVELS.length - 1 ? '' : 'none';
+
+      if (rafId) cancelAnimationFrame(rafId);
+      loop(performance.now());
+    }
+
+    // ── Render loop ────────────────────────────────────────────────────────────
+
+    function loop(ts) {
+      renderer.render(ts);
+      rafId = requestAnimationFrame(loop);
+    }
+
+    // ── Input helpers ──────────────────────────────────────────────────────────
+
+    function canvasPos(e) {
+      const r = canvas.getBoundingClientRect();
+      const sx = canvas.width  / r.width;
+      const sy = canvas.height / r.height;
+      return {
+        x: (e.clientX - r.left) * sx,
+        y: (e.clientY - r.top)  * sy,
+      };
+    }
+
+    function touchPos(e) {
+      return canvasPos(e.changedTouches[0]);
+    }
+
+    // ── Mouse events ───────────────────────────────────────────────────────────
+
+    canvas.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      const { x, y } = canvasPos(e);
+      const piece = engine.getPieceAt(x, y);
+      if (piece) engine.startDrag(piece, x, y);
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (!engine.draggedPiece) return;
+      const { x, y } = canvasPos(e);
+      engine.moveDrag(x, y);
+    });
+
+    window.addEventListener('mouseup', e => {
+      if (!engine.draggedPiece) return;
+      const snapped = engine.endDrag();
+      if (snapped) handleSnap();
+    });
+
+    // ── Touch events ───────────────────────────────────────────────────────────
+
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      const { x, y } = touchPos(e);
+      const piece = engine.getPieceAt(x, y);
+      if (piece) engine.startDrag(piece, x, y);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (!engine.draggedPiece) return;
+      const { x, y } = touchPos(e);
+      engine.moveDrag(x, y);
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', e => {
+      e.preventDefault();
+      if (!engine.draggedPiece) return;
+      const snapped = engine.endDrag();
+      if (snapped) handleSnap();
+    }, { passive: false });
+
+    // ── Snap / completion handling ─────────────────────────────────────────────
+
+    function handleSnap() {
+      // Find the piece that just snapped (it has the highest z among snapped)
+      const justSnapped = engine.pieces.filter(p => p.snapped)
+        .reduce((a, b) => a.z > b.z ? a : b, null);
+      if (justSnapped) renderer.recordSnap(justSnapped, performance.now());
+
+      if (engine.completed) {
+        setTimeout(() => {
+          document.getElementById('winOverlay').classList.remove('hidden');
+        }, 700);
+      }
+    }
+
+    // ── UI wiring ──────────────────────────────────────────────────────────────
+
+    const select = document.getElementById('levelSelect');
+    LEVELS.forEach((lv, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${lv.id}. ${lv.name} (${lv.difficulty})`;
+      select.appendChild(opt);
+    });
+    select.addEventListener('change', () => loadLevel(+select.value));
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      engine.reset(canvas.width, canvas.height);
+      renderer.invalidateCache();
+      document.getElementById('winOverlay').classList.add('hidden');
+    });
+
+    document.getElementById('nextLevelBtn').addEventListener('click', () => {
+      const next = (levelIdx + 1) % LEVELS.length;
+      select.value = next;
+      loadLevel(next);
+    });
+
+    document.getElementById('playAgainBtn').addEventListener('click', () => {
+      engine.reset(canvas.width, canvas.height);
+      renderer.invalidateCache();
+      document.getElementById('winOverlay').classList.add('hidden');
+    });
+
+    // ── Resize ─────────────────────────────────────────────────────────────────
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => loadLevel(levelIdx), 200);
+    });
+
+    // ── Check URL for level param ──────────────────────────────────────────────
+
+    const urlLevel = new URLSearchParams(location.search).get('level');
+    const startIdx = urlLevel ? Math.min(Math.max(0, +urlLevel - 1), LEVELS.length - 1) : 0;
+    select.value = startIdx;
+    loadLevel(startIdx);
+  </script>
+</body>
+</html>

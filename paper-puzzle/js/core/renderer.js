@@ -135,9 +135,10 @@ export class PaperPuzzleRenderer {
 
     path.moveTo(verts[0].x - cx, verts[0].y - cy);
 
-    for (let i = 0; i < 3; i++) {
+    const n = verts.length;
+    for (let i = 0; i < n; i++) {
       const edge = edges[i];
-      const nextV = verts[(i + 1) % 3];
+      const nextV = verts[(i + 1) % n];
 
       if (edge.isBorder) {
         path.lineTo(nextV.x - cx, nextV.y - cy);

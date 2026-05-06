@@ -8,7 +8,7 @@ export class PaperPuzzleRenderer {
     this._imgCache = null;
     this._puzzleX = 0;
     this._puzzleY = 0;
-    this._snapFlashes = new Map(); // pieceId → timestamp of snap
+    this._snapFlashes = new Map(); // pieceId → snap timestamp
     this._bgCanvas = null;
   }
 
@@ -48,31 +48,25 @@ export class PaperPuzzleRenderer {
   // ── Background ──────────────────────────────────────────────────────────────
 
   _drawBackground() {
-    if (this._bgCanvas) {
-      this.ctx.drawImage(this._bgCanvas, 0, 0);
-      return;
-    }
+    if (this._bgCanvas) { this.ctx.drawImage(this._bgCanvas, 0, 0); return; }
     const { canvas } = this;
     const off = document.createElement('canvas');
     off.width = canvas.width;
     off.height = canvas.height;
     const c = off.getContext('2d');
 
-    // Cork/wood base colour
     c.fillStyle = '#c4976a';
     c.fillRect(0, 0, off.width, off.height);
 
-    // Subtle vignette
     const vig = c.createRadialGradient(
       off.width / 2, off.height / 2, off.width * 0.2,
-      off.width / 2, off.height / 2, off.width * 0.85
+      off.width / 2, off.height / 2, off.width * 0.85,
     );
     vig.addColorStop(0, 'rgba(0,0,0,0)');
     vig.addColorStop(1, 'rgba(0,0,0,0.35)');
     c.fillStyle = vig;
     c.fillRect(0, 0, off.width, off.height);
 
-    // Wood grain lines
     const rng = this._rng(42);
     c.globalAlpha = 0.12;
     for (let i = 0; i < 32; i++) {
@@ -93,34 +87,17 @@ export class PaperPuzzleRenderer {
     this.ctx.drawImage(off, 0, 0);
   }
 
-  // ── Puzzle outline guide ────────────────────────────────────────────────────
+  // ── Puzzle outline ──────────────────────────────────────────────────────────
 
   _drawGuide() {
     const { ctx, engine, _puzzleX: px, _puzzleY: py } = this;
-    const { cols, rows, pieceW, pieceH } = engine.level;
-    const W = cols * pieceW;
-    const H = rows * pieceH;
+    const { imageW: W, imageH: H } = engine.level;
 
     ctx.save();
     ctx.setLineDash([8, 8]);
     ctx.strokeStyle = 'rgba(255,255,255,0.4)';
     ctx.lineWidth = 2;
     ctx.strokeRect(px, py, W, H);
-    // Grid lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 1;
-    for (let c = 1; c < cols; c++) {
-      ctx.beginPath();
-      ctx.moveTo(px + c * pieceW, py);
-      ctx.lineTo(px + c * pieceW, py + H);
-      ctx.stroke();
-    }
-    for (let r = 1; r < rows; r++) {
-      ctx.beginPath();
-      ctx.moveTo(px, py + r * pieceH);
-      ctx.lineTo(px + W, py + r * pieceH);
-      ctx.stroke();
-    }
     ctx.setLineDash([]);
     ctx.restore();
   }
@@ -129,9 +106,7 @@ export class PaperPuzzleRenderer {
 
   _getImg() {
     if (this._imgCache) return this._imgCache;
-    const { cols, rows, pieceW, pieceH, drawImage } = this.engine.level;
-    const w = cols * pieceW;
-    const h = rows * pieceH;
+    const { imageW: w, imageH: h, drawImage } = this.engine.level;
     const off = document.createElement('canvas');
     off.width = w;
     off.height = h;
@@ -140,108 +115,44 @@ export class PaperPuzzleRenderer {
     return off;
   }
 
-  // ── Torn edge path for a triangular piece (piece-local coords, centroid = 0,0) ─
+  // ── Piece path (piece-local coords, centroid = 0,0) ─────────────────────────
   //
-  // Each grid cell is split along its TL→BR diagonal into:
-  //   Triangle A  (upper-right): vertices TL, TR, BR of cell
-  //   Triangle B  (lower-left):  vertices TL, BR, BL of cell
+  // Vertices are stored in puzzle-space; we subtract the centroid (cx,cy)
+  // to get piece-local coords for the path.
   //
-  // Piece-local vertex positions (pw = pieceW, ph = pieceH):
-  //   A: TL=(-2pw/3,-ph/3)  TR=(pw/3,-ph/3)  BR=(pw/3, 2ph/3)
-  //   B: TL=(-pw/3,-2ph/3)  BR=(2pw/3,ph/3)  BL=(-pw/3, ph/3)
-  //
-  // Diagonal cut points at parameter t (0→1, TL→BR of cell):
-  //   cell-local base = (-pw/2 + t*pw, -ph/2 + t*ph)
-  //   perp direction  = (-ph, pw) / diagLen   (rotated 90° CCW from diagonal)
-  //   A piece-local   = base + off*perp - centroid_A
-  //   B piece-local   = base + off*perp - centroid_B
+  // Each edge is either:
+  //   isBorder=true  → straight lineTo next vertex
+  //   isBorder=false → world-space cut points from cutMap, subtracted by centroid,
+  //                    traversed forward or reversed depending on canonical direction
 
   _piecePath(piece) {
-    const { type, cellCol: c, cellRow: r } = piece;
-    const { cols, rows, pieceW: pw, pieceH: ph } = this.engine.level;
-    const { hCuts, vCuts, dCuts } = this.engine;
-    const diagLen = Math.sqrt(pw * pw + ph * ph);
-    const perpX = -ph / diagLen; // perpendicular to diagonal
-    const perpY =  pw / diagLen;
+    const { verts, edges, cx, cy } = piece;
+    const { cutMap } = this.engine;
     const path = new Path2D();
 
-    if (type === 'A') {
-      // ── Triangle A: TL → (top edge) → TR → (right edge) → BR → (diagonal rev) → TL ──
+    path.moveTo(verts[0].x - cx, verts[0].y - cy);
 
-      path.moveTo(-2 * pw / 3, -ph / 3); // TL
+    for (let i = 0; i < 3; i++) {
+      const edge = edges[i];
+      const nextV = verts[(i + 1) % 3];
 
-      // TOP edge (left → right): shared with A of cell (c, r-1) bottom / border
-      if (r === 0) {
-        path.lineTo(pw / 3, -ph / 3);
+      if (edge.isBorder) {
+        path.lineTo(nextV.x - cx, nextV.y - cy);
       } else {
-        for (const pt of hCuts[r - 1][c]) {
-          // hCut point cell-local: (-pw/2 + t*pw, -ph/2 + off)
-          // piece-local A: subtract centroid (pw/6, -ph/6)
-          path.lineTo(-2 * pw / 3 + pt.t * pw, -ph / 3 + pt.off);
+        const pts = cutMap.get(edge.key);
+        if (edge.reversed) {
+          for (let j = pts.length - 1; j >= 0; j--) {
+            path.lineTo(pts[j].x - cx, pts[j].y - cy);
+          }
+        } else {
+          for (const pt of pts) {
+            path.lineTo(pt.x - cx, pt.y - cy);
+          }
         }
       }
-
-      // RIGHT edge (top → bottom): shared with B of cell (c+1, r) left / border
-      if (c === cols - 1) {
-        path.lineTo(pw / 3, 2 * ph / 3);
-      } else {
-        for (const pt of vCuts[c][r]) {
-          // vCut point cell-local: (pw/2 + off, -ph/2 + t*ph)
-          // piece-local A: subtract centroid (pw/6, -ph/6)
-          path.lineTo(pw / 3 + pt.off, -ph / 3 + pt.t * ph);
-        }
-      }
-
-      // DIAGONAL (BR → TL, reversed): shared with triangle B in same cell
-      const dcut = dCuts[r][c];
-      for (let i = dcut.length - 1; i >= 0; i--) {
-        const pt = dcut[i];
-        path.lineTo(
-          -2 * pw / 3 + pt.t * pw + pt.off * perpX,
-          -ph / 3     + pt.t * ph + pt.off * perpY,
-        );
-      }
-
-      path.closePath();
-
-    } else {
-      // ── Triangle B: TL → (diagonal fwd) → BR → (bottom edge rev) → BL → (left edge rev) → TL ──
-
-      path.moveTo(-pw / 3, -2 * ph / 3); // TL
-
-      // DIAGONAL (TL → BR, forward): shared with triangle A in same cell
-      for (const pt of dCuts[r][c]) {
-        path.lineTo(
-          -pw / 3 + pt.t * pw + pt.off * perpX,
-          -2 * ph / 3 + pt.t * ph + pt.off * perpY,
-        );
-      }
-
-      // BOTTOM edge (right → left, reversed): shared with B of cell (c, r+1) top / border
-      if (r === rows - 1) {
-        path.lineTo(-pw / 3, ph / 3);
-      } else {
-        const cut = hCuts[r][c];
-        for (let i = cut.length - 1; i >= 0; i--) {
-          // piece-local B: subtract centroid (-pw/6, ph/6)
-          path.lineTo(-pw / 3 + cut[i].t * pw, ph / 3 + cut[i].off);
-        }
-      }
-
-      // LEFT edge (bottom → top, reversed): shared with A of cell (c-1, r) right / border
-      if (c === 0) {
-        path.lineTo(-pw / 3, -2 * ph / 3);
-      } else {
-        const cut = vCuts[c - 1][r];
-        for (let i = cut.length - 1; i >= 0; i--) {
-          // piece-local B: subtract centroid (-pw/6, ph/6)
-          path.lineTo(-pw / 3 + cut[i].off, -2 * ph / 3 + cut[i].t * ph);
-        }
-      }
-
-      path.closePath();
     }
 
+    path.closePath();
     return path;
   }
 
@@ -257,7 +168,7 @@ export class PaperPuzzleRenderer {
     if (piece.rotation) ctx.rotate(piece.rotation);
     if (isDragged) ctx.scale(1.045, 1.045);
 
-    // Drop shadow: fill the shape, canvas shadow creates the blur
+    // Drop shadow — fill shape so canvas shadow API casts it correctly
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.55)';
     ctx.shadowBlur = isDragged ? 22 : 10;
@@ -265,15 +176,15 @@ export class PaperPuzzleRenderer {
     ctx.shadowOffsetY = isDragged ? 14 : 6;
     ctx.fillStyle = '#555';
     ctx.fill(path);
-    ctx.restore(); // shadow gone
+    ctx.restore();
 
-    // Clip to piece shape and draw the image
+    // Clip to piece shape and render image portion
     ctx.save();
     ctx.clip(path);
     ctx.drawImage(img, -piece.imgOffX, -piece.imgOffY);
     ctx.restore();
 
-    // Paper-edge highlight (white outer, dark inner)
+    // Paper-edge: white highlight then dark shadow line
     ctx.strokeStyle = 'rgba(255,255,255,0.88)';
     ctx.lineWidth = 2.5;
     ctx.stroke(path);
@@ -283,10 +194,10 @@ export class PaperPuzzleRenderer {
 
     ctx.restore();
 
-    // Snap-flash green glow (drawn in canvas coords to avoid clip issues)
+    // Snap-flash green glow (outside main save/restore to avoid being clipped)
     if (piece.snapped) {
       const flash = this._snapFlashes.get(piece.id);
-      let alpha = 0.55;
+      let alpha = 0.3;
       if (flash !== undefined) {
         const age = timestamp - flash;
         alpha = age < 400 ? 0.85 * (1 - age / 400) + 0.3 : 0.3;
@@ -308,13 +219,14 @@ export class PaperPuzzleRenderer {
 
   _drawSnapHint(piece) {
     const { ctx } = this;
-    const { pieceW: pw } = this.engine.level;
     const dx = piece.x - piece.targetX;
     const dy = piece.y - piece.targetY;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > pw * 1.6) return;
+    // Show hint within 2.5× the piece's bounding radius
+    const threshold = Math.sqrt(piece.boundR2) * 2.5;
+    if (dist > threshold) return;
 
-    const alpha = (1 - dist / (pw * 1.6)) * 0.65;
+    const alpha = (1 - dist / threshold) * 0.65;
     ctx.save();
     ctx.translate(piece.targetX, piece.targetY);
     ctx.globalAlpha = alpha;
@@ -352,7 +264,7 @@ export class PaperPuzzleRenderer {
     ctx.restore();
   }
 
-  // ── Simple deterministic RNG ────────────────────────────────────────────────
+  // ── Deterministic RNG for background ────────────────────────────────────────
 
   _rng(seed) {
     let s = seed | 1;

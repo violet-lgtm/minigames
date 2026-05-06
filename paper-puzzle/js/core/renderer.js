@@ -204,6 +204,7 @@ export class PaperPuzzleRenderer {
 
     ctx.save();
     ctx.translate(piece.x, piece.y);
+    if (piece.rotation) ctx.rotate(piece.rotation);
     if (isDragged) ctx.scale(1.045, 1.045);
 
     // Drop shadow: fill the shape, canvas shadow creates the blur

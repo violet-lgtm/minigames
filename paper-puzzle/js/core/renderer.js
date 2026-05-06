@@ -140,56 +140,108 @@ export class PaperPuzzleRenderer {
     return off;
   }
 
-  // ── Torn edge path for a piece (in piece-local coords, centre = 0,0) ────────
+  // ── Torn edge path for a triangular piece (piece-local coords, centroid = 0,0) ─
+  //
+  // Each grid cell is split along its TL→BR diagonal into:
+  //   Triangle A  (upper-right): vertices TL, TR, BR of cell
+  //   Triangle B  (lower-left):  vertices TL, BR, BL of cell
+  //
+  // Piece-local vertex positions (pw = pieceW, ph = pieceH):
+  //   A: TL=(-2pw/3,-ph/3)  TR=(pw/3,-ph/3)  BR=(pw/3, 2ph/3)
+  //   B: TL=(-pw/3,-2ph/3)  BR=(2pw/3,ph/3)  BL=(-pw/3, ph/3)
+  //
+  // Diagonal cut points at parameter t (0→1, TL→BR of cell):
+  //   cell-local base = (-pw/2 + t*pw, -ph/2 + t*ph)
+  //   perp direction  = (-ph, pw) / diagLen   (rotated 90° CCW from diagonal)
+  //   A piece-local   = base + off*perp - centroid_A
+  //   B piece-local   = base + off*perp - centroid_B
 
   _piecePath(piece) {
-    const { gridCol: c, gridRow: r } = piece;
+    const { type, cellCol: c, cellRow: r } = piece;
     const { cols, rows, pieceW: pw, pieceH: ph } = this.engine.level;
-    const { hCuts, vCuts } = this.engine;
+    const { hCuts, vCuts, dCuts } = this.engine;
+    const diagLen = Math.sqrt(pw * pw + ph * ph);
+    const perpX = -ph / diagLen; // perpendicular to diagonal
+    const perpY =  pw / diagLen;
     const path = new Path2D();
 
-    // Start at top-left
-    path.moveTo(-pw / 2, -ph / 2);
+    if (type === 'A') {
+      // ── Triangle A: TL → (top edge) → TR → (right edge) → BR → (diagonal rev) → TL ──
 
-    // TOP edge (left → right)
-    if (r === 0) {
-      path.lineTo(pw / 2, -ph / 2);
-    } else {
-      for (const pt of hCuts[r - 1][c]) {
-        path.lineTo(-pw / 2 + pt.t * pw, -ph / 2 + pt.off);
+      path.moveTo(-2 * pw / 3, -ph / 3); // TL
+
+      // TOP edge (left → right): shared with A of cell (c, r-1) bottom / border
+      if (r === 0) {
+        path.lineTo(pw / 3, -ph / 3);
+      } else {
+        for (const pt of hCuts[r - 1][c]) {
+          // hCut point cell-local: (-pw/2 + t*pw, -ph/2 + off)
+          // piece-local A: subtract centroid (pw/6, -ph/6)
+          path.lineTo(-2 * pw / 3 + pt.t * pw, -ph / 3 + pt.off);
+        }
       }
+
+      // RIGHT edge (top → bottom): shared with B of cell (c+1, r) left / border
+      if (c === cols - 1) {
+        path.lineTo(pw / 3, 2 * ph / 3);
+      } else {
+        for (const pt of vCuts[c][r]) {
+          // vCut point cell-local: (pw/2 + off, -ph/2 + t*ph)
+          // piece-local A: subtract centroid (pw/6, -ph/6)
+          path.lineTo(pw / 3 + pt.off, -ph / 3 + pt.t * ph);
+        }
+      }
+
+      // DIAGONAL (BR → TL, reversed): shared with triangle B in same cell
+      const dcut = dCuts[r][c];
+      for (let i = dcut.length - 1; i >= 0; i--) {
+        const pt = dcut[i];
+        path.lineTo(
+          -2 * pw / 3 + pt.t * pw + pt.off * perpX,
+          -ph / 3     + pt.t * ph + pt.off * perpY,
+        );
+      }
+
+      path.closePath();
+
+    } else {
+      // ── Triangle B: TL → (diagonal fwd) → BR → (bottom edge rev) → BL → (left edge rev) → TL ──
+
+      path.moveTo(-pw / 3, -2 * ph / 3); // TL
+
+      // DIAGONAL (TL → BR, forward): shared with triangle A in same cell
+      for (const pt of dCuts[r][c]) {
+        path.lineTo(
+          -pw / 3 + pt.t * pw + pt.off * perpX,
+          -2 * ph / 3 + pt.t * ph + pt.off * perpY,
+        );
+      }
+
+      // BOTTOM edge (right → left, reversed): shared with B of cell (c, r+1) top / border
+      if (r === rows - 1) {
+        path.lineTo(-pw / 3, ph / 3);
+      } else {
+        const cut = hCuts[r][c];
+        for (let i = cut.length - 1; i >= 0; i--) {
+          // piece-local B: subtract centroid (-pw/6, ph/6)
+          path.lineTo(-pw / 3 + cut[i].t * pw, ph / 3 + cut[i].off);
+        }
+      }
+
+      // LEFT edge (bottom → top, reversed): shared with A of cell (c-1, r) right / border
+      if (c === 0) {
+        path.lineTo(-pw / 3, -2 * ph / 3);
+      } else {
+        const cut = vCuts[c - 1][r];
+        for (let i = cut.length - 1; i >= 0; i--) {
+          // piece-local B: subtract centroid (-pw/6, ph/6)
+          path.lineTo(-pw / 3 + cut[i].off, -2 * ph / 3 + cut[i].t * ph);
+        }
+      }
+
+      path.closePath();
     }
 
-    // RIGHT edge (top → bottom)
-    if (c === cols - 1) {
-      path.lineTo(pw / 2, ph / 2);
-    } else {
-      for (const pt of vCuts[c][r]) {
-        path.lineTo(pw / 2 + pt.off, -ph / 2 + pt.t * ph);
-      }
-    }
-
-    // BOTTOM edge (right → left)
-    if (r === rows - 1) {
-      path.lineTo(-pw / 2, ph / 2);
-    } else {
-      const cut = hCuts[r][c];
-      for (let i = cut.length - 1; i >= 0; i--) {
-        path.lineTo(-pw / 2 + cut[i].t * pw, ph / 2 + cut[i].off);
-      }
-    }
-
-    // LEFT edge (bottom → top)
-    if (c === 0) {
-      path.lineTo(-pw / 2, -ph / 2);
-    } else {
-      const cut = vCuts[c - 1][r];
-      for (let i = cut.length - 1; i >= 0; i--) {
-        path.lineTo(-pw / 2 + cut[i].off, -ph / 2 + cut[i].t * ph);
-      }
-    }
-
-    path.closePath();
     return path;
   }
 
@@ -197,8 +249,6 @@ export class PaperPuzzleRenderer {
 
   _drawPiece(piece, isDragged, timestamp) {
     const { ctx } = this;
-    const { gridCol: c, gridRow: r } = piece;
-    const { pieceW: pw, pieceH: ph } = this.engine.level;
     const img = this._getImg();
     const path = this._piecePath(piece);
 
@@ -220,7 +270,7 @@ export class PaperPuzzleRenderer {
     // Clip to piece shape and draw the image
     ctx.save();
     ctx.clip(path);
-    ctx.drawImage(img, -(c + 0.5) * pw, -(r + 0.5) * ph);
+    ctx.drawImage(img, -piece.imgOffX, -piece.imgOffY);
     ctx.restore();
 
     // Paper-edge highlight (white outer, dark inner)

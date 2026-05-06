@@ -50,17 +50,16 @@ export class PaperPuzzleEngine {
   // t=0 and t=1 always have off=0 so corners meet cleanly.
   _edge(length, seedStr) {
     const rng = seededRng(seedStr);
-    const n = Math.max(6, Math.floor(length / 10));
+    // Dense points + high amplitude + minimal smoothing = very jagged tears
+    const n = Math.max(10, Math.floor(length / 6));
     const pts = [{ t: 0, off: 0 }];
     for (let i = 1; i < n; i++) {
-      pts.push({ t: i / n, off: (rng() - 0.5) * 38 });
+      pts.push({ t: i / n, off: (rng() - 0.5) * 58 });
     }
     pts.push({ t: 1, off: 0 });
-    // 3-pass Laplacian smooth (keeps endpoints fixed)
-    for (let pass = 0; pass < 3; pass++) {
-      for (let i = 1; i < pts.length - 1; i++) {
-        pts[i].off = (pts[i - 1].off + pts[i].off * 2 + pts[i + 1].off) / 4;
-      }
+    // Single smoothing pass — preserves jaggedness while removing single-pixel spikes
+    for (let i = 1; i < pts.length - 1; i++) {
+      pts[i].off = (pts[i - 1].off + pts[i].off * 2 + pts[i + 1].off) / 4;
     }
     return pts;
   }
@@ -75,6 +74,7 @@ export class PaperPuzzleEngine {
           gridRow: r,
           x: 0, y: 0,
           targetX: 0, targetY: 0,
+          rotation: 0,
           snapped: false,
           z: this._zCount++,
         });
@@ -90,35 +90,33 @@ export class PaperPuzzleEngine {
     }
   }
 
-  scatter(canvasW, canvasH) {
-    const { cols, rows, pieceW, pieceH, seed } = this.level;
-    const rng = seededRng(seed + '_scatter' + Date.now());
-    const totalW = cols * pieceW;
-    const totalH = rows * pieceH;
-    const pad = 10;
+  // Stack all pieces in a small pile at the canvas centre with random rotations.
+  pile(canvasW, canvasH) {
+    const { pieceW, pieceH, seed } = this.level;
+    const rng = seededRng(seed + '_pile' + Date.now());
+    const cx = canvasW / 2;
+    const cy = canvasH / 2;
+    // Spread radius: pieces offset by up to ~12% of their size from the pile centre
+    const spreadX = pieceW * 0.12;
+    const spreadY = pieceH * 0.12;
+    const maxRot  = Math.PI / 7; // ±~26°
+
     for (const p of this.pieces) {
-      // Try up to 20 times to land outside the target puzzle area
-      let x, y, tries = 0;
-      do {
-        x = pad + pieceW / 2 + rng() * (canvasW - pieceW - pad * 2);
-        y = pad + pieceH / 2 + rng() * (canvasH - pieceH - pad * 2);
-        tries++;
-      } while (
-        tries < 20 &&
-        x > p.targetX - pieceW * 0.9 && x < p.targetX + pieceW * 0.9 &&
-        y > p.targetY - pieceH * 0.9 && y < p.targetY + pieceH * 0.9
-      );
-      p.x = x;
-      p.y = y;
-      p.snapped = false;
+      p.x        = cx + (rng() - 0.5) * 2 * spreadX;
+      p.y        = cy + (rng() - 0.5) * 2 * spreadY;
+      p.rotation = (rng() - 0.5) * 2 * maxRot;
+      p.snapped  = false;
     }
   }
 
   getPieceAt(x, y) {
     const { pieceW, pieceH } = this.level;
+    // Use circumscribed-circle radius so hit-testing works at any rotation
+    const r2 = (pieceW * pieceW + pieceH * pieceH) / 4;
     let best = null;
     for (const p of this.pieces) {
-      if (Math.abs(x - p.x) < pieceW * 0.55 && Math.abs(y - p.y) < pieceH * 0.55) {
+      const dx = x - p.x, dy = y - p.y;
+      if (dx * dx + dy * dy < r2) {
         if (!best || p.z > best.z) best = p;
       }
     }
@@ -131,6 +129,7 @@ export class PaperPuzzleEngine {
     this.dragOffsetY = my - piece.y;
     piece.z = this._zCount++;
     piece.snapped = false;
+    piece.rotation = 0; // straighten paper as you lift it from the pile
   }
 
   moveDrag(mx, my) {
@@ -162,6 +161,6 @@ export class PaperPuzzleEngine {
       p.z = this._zCount++;
       p.snapped = false;
     }
-    this.scatter(canvasW, canvasH);
+    this.pile(canvasW, canvasH);
   }
 }

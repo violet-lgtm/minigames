@@ -103,7 +103,7 @@
       const puzzleY = Math.round((canvas.height - totalH) / 2);
 
       engine.setTargets(puzzleX, puzzleY);
-      engine.scatter(canvas.width, canvas.height);
+      engine.pile(canvas.width, canvas.height);
 
       renderer = new PaperPuzzleRenderer(canvas, engine);
       renderer.setPuzzleOrigin(puzzleX, puzzleY);

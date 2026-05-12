@@ -205,6 +205,8 @@ export class PaperPuzzleEngine {
         imgOffX: cx,
         imgOffY: cy,
         boundR2,
+        // Piece-local verts (centroid at origin) — precomputed for hit testing
+        localVerts: poly.map(v => ({ x: v.x - cx, y: v.y - cy })),
         edges,
         x: 0, y: 0,
         targetX: 0, targetY: 0,
@@ -397,8 +399,7 @@ export class PaperPuzzleEngine {
       }
 
       // Exact point-in-polygon test against piece-local vertices
-      const localVerts = p.verts.map(v => ({ x: v.x - p.cx, y: v.y - p.cy }));
-      if (ptInPoly(lx, ly, localVerts) && (!best || p.z > best.z)) best = p;
+      if (ptInPoly(lx, ly, p.localVerts) && (!best || p.z > best.z)) best = p;
     }
     return best;
   }

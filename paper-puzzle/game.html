@@ -60,11 +60,15 @@
       try {
         const data = decodeCustomLevel(hashMatch[1]);
         const img = new Image();
-        img.src = data.img;
+        img.onload = () => {
+          customLevel.drawImage = (ctx, w, h) => ctx.drawImage(img, 0, 0, w, h);
+          loadLevel(-1);
+        };
         customLevel = {
           ...data,
-          drawImage(ctx, w, h) { ctx.drawImage(img, 0, 0, w, h); },
+          drawImage() {}, // replaced once image loads
         };
+        img.src = data.img; // set src after onload is wired
       } catch (_) { /* bad hash — fall through to normal mode */ }
     }
 
@@ -264,9 +268,7 @@
 
     // ── Start ──────────────────────────────────────────────────────────────────
 
-    if (customLevel) {
-      loadLevel(-1);
-    } else {
+    if (!customLevel) {
       const urlLevel = new URLSearchParams(location.search).get('level');
       const startIdx = urlLevel ? Math.min(Math.max(0, +urlLevel - 1), LEVELS.length - 1) : 0;
       select.value = startIdx;

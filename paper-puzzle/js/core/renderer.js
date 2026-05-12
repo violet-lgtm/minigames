@@ -10,6 +10,7 @@ export class PaperPuzzleRenderer {
     this._puzzleY = 0;
     this._snapFlashes = new Map(); // pieceId → snap timestamp
     this._bgCanvas = null;
+    this._pathCache = new Map(); // pieceId → Path2D (shape never changes)
   }
 
   setPuzzleOrigin(x, y) {
@@ -20,6 +21,7 @@ export class PaperPuzzleRenderer {
   invalidateCache() {
     this._imgCache = null;
     this._bgCanvas = null;
+    this._pathCache = new Map();
   }
 
   render(timestamp) {
@@ -29,8 +31,13 @@ export class PaperPuzzleRenderer {
     this._drawBackground();
     this._drawGuide();
 
-    // Snapped pieces render first (bottom), then unsnapped by z order
-    const sorted = [...engine.pieces].sort((a, b) => {
+    // Snapped pieces render first (bottom), then unsnapped by z order.
+    // Reuse the same array to avoid per-frame allocation.
+    if (!this._sorted) this._sorted = [];
+    const sorted = this._sorted;
+    sorted.length = 0;
+    for (const p of engine.pieces) sorted.push(p);
+    sorted.sort((a, b) => {
       if (a.snapped !== b.snapped) return a.snapped ? -1 : 1;
       return a.z - b.z;
     });
@@ -162,10 +169,17 @@ export class PaperPuzzleRenderer {
 
   // ── Draw a single piece ─────────────────────────────────────────────────────
 
+  // Return a cached Path2D for the piece — built once, reused every frame.
+  _getPath(piece) {
+    let p = this._pathCache.get(piece.id);
+    if (!p) { p = this._piecePath(piece); this._pathCache.set(piece.id, p); }
+    return p;
+  }
+
   _drawPiece(piece, isDragged, timestamp) {
     const { ctx } = this;
     const img = this._getImg();
-    const path = this._piecePath(piece);
+    const path = this._getPath(piece);
 
     ctx.save();
     ctx.translate(piece.x, piece.y);
@@ -210,7 +224,7 @@ export class PaperPuzzleRenderer {
       ctx.translate(piece.x, piece.y);
       ctx.strokeStyle = `rgba(80,220,80,${alpha})`;
       ctx.lineWidth = 3;
-      ctx.stroke(this._piecePath(piece));
+      ctx.stroke(this._getPath(piece));
       ctx.restore();
     }
   }

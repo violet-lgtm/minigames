@@ -88,7 +88,7 @@
 
         // Draw an animated demo puzzle on the preview canvas
         const canvas = document.getElementById('previewCanvas');
-        const renderer = new Renderer(canvas, { width: 3, height: 3 });
+        const renderer = new Renderer(canvas, { width: 3, height: 3 }, themeManager.getTileTheme());
 
         const demoTiles = [
             { type: 'power', x: 0, y: 1, rotation: 0, powered: true },

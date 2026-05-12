@@ -1,6 +1,6 @@
 // Wire Puzzle Renderer
 export class Renderer {
-    constructor(canvas, gridSize) {
+    constructor(canvas, gridSize, tileTheme = null) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.gridSize = gridSize;
@@ -8,7 +8,24 @@ export class Renderer {
         this.offsetX = 0;
         this.offsetY = 0;
 
+        // Default theme for tiles
+        this.tileTheme = tileTheme || {
+            wirePowered: '#FFD700',
+            wireUnpowered: '#666',
+            gridLine: '#333',
+            canvasBg: '#1a1a1a',
+            poweredGlow: 'rgba(255, 215, 0, 0.1)',
+            lockIcon: '#fff',
+            railTrack: 'rgba(102, 126, 234, 0.4)',
+            railCap: 'rgba(102, 126, 234, 0.6)',
+            draggableBorder: 'rgba(102, 126, 234, 0.8)'
+        };
+
         this.updateCanvasSize();
+    }
+
+    setTheme(tileTheme) {
+        this.tileTheme = tileTheme;
     }
 
     updateCanvasSize() {
@@ -22,7 +39,7 @@ export class Renderer {
     }
 
     clear() {
-        this.ctx.fillStyle = '#1a1a1a';
+        this.ctx.fillStyle = this.tileTheme.canvasBg;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
@@ -58,7 +75,7 @@ export class Renderer {
         const px = this.offsetX + x * this.cellSize;
         const py = this.offsetY + y * this.cellSize;
 
-        this.ctx.strokeStyle = '#333';
+        this.ctx.strokeStyle = this.tileTheme.gridLine;
         this.ctx.lineWidth = 1;
         this.ctx.strokeRect(px, py, this.cellSize, this.cellSize);
     }
@@ -73,7 +90,7 @@ export class Renderer {
 
         // Draw tile background if powered
         if (tile.powered && tile.type !== 'empty') {
-            this.ctx.fillStyle = 'rgba(255, 215, 0, 0.1)';
+            this.ctx.fillStyle = this.tileTheme.poweredGlow;
             this.ctx.fillRect(-this.cellSize / 2, -this.cellSize / 2, this.cellSize, this.cellSize);
         }
 
@@ -106,7 +123,7 @@ export class Renderer {
 
         // Draw lock indicator
         if (tile.locked && tile.type !== 'power' && tile.type !== 'light') {
-            this.ctx.fillStyle = '#fff';
+            this.ctx.fillStyle = this.tileTheme.lockIcon;
             this.ctx.font = '12px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.fillText('🔒', px + this.cellSize / 2, py + this.cellSize - 5);
@@ -117,7 +134,7 @@ export class Renderer {
         const size = this.cellSize * 0.4;
 
         // Draw lightning bolt
-        this.ctx.fillStyle = powered ? '#FFD700' : '#666';
+        this.ctx.fillStyle = powered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.beginPath();
         this.ctx.moveTo(-size * 0.2, -size);
         this.ctx.lineTo(size * 0.2, -size * 0.2);
@@ -129,7 +146,7 @@ export class Renderer {
         this.ctx.fill();
 
         // Draw connection wire
-        this.ctx.strokeStyle = powered ? '#FFD700' : '#666';
+        this.ctx.strokeStyle = powered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.lineWidth = 4;
         this.ctx.beginPath();
         this.ctx.moveTo(0, 0);
@@ -141,7 +158,7 @@ export class Renderer {
         const radius = this.cellSize * 0.3;
 
         // Draw bulb
-        this.ctx.fillStyle = powered ? '#FFD700' : '#444';
+        this.ctx.fillStyle = powered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.beginPath();
         this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
         this.ctx.fill();
@@ -149,8 +166,10 @@ export class Renderer {
         // Draw glow if powered
         if (powered) {
             const gradient = this.ctx.createRadialGradient(0, 0, radius * 0.5, 0, 0, radius * 1.5);
-            gradient.addColorStop(0, 'rgba(255, 215, 0, 0.5)');
-            gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+            // Use powered glow color from theme
+            const glowColor = this.tileTheme.poweredGlow;
+            gradient.addColorStop(0, glowColor.replace(/[\d.]+\)$/g, '0.5)'));
+            gradient.addColorStop(1, glowColor.replace(/[\d.]+\)$/g, '0)'));
             this.ctx.fillStyle = gradient;
             this.ctx.beginPath();
             this.ctx.arc(0, 0, radius * 1.5, 0, Math.PI * 2);
@@ -158,7 +177,7 @@ export class Renderer {
         }
 
         // Draw connection wire
-        this.ctx.strokeStyle = powered ? '#FFD700' : '#666';
+        this.ctx.strokeStyle = powered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.lineWidth = 4;
         this.ctx.beginPath();
         this.ctx.moveTo(-this.cellSize / 2, 0);
@@ -167,7 +186,7 @@ export class Renderer {
     }
 
     drawStraight(powered) {
-        this.ctx.strokeStyle = powered ? '#FFD700' : '#666';
+        this.ctx.strokeStyle = powered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.lineWidth = 4;
         this.ctx.beginPath();
         this.ctx.moveTo(-this.cellSize / 2, 0);
@@ -176,7 +195,7 @@ export class Renderer {
     }
 
     drawCorner(powered) {
-        this.ctx.strokeStyle = powered ? '#FFD700' : '#666';
+        this.ctx.strokeStyle = powered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.lineWidth = 4;
         this.ctx.beginPath();
         this.ctx.moveTo(0, -this.cellSize / 2);
@@ -186,7 +205,7 @@ export class Renderer {
     }
 
     drawTJunction(powered) {
-        this.ctx.strokeStyle = powered ? '#FFD700' : '#666';
+        this.ctx.strokeStyle = powered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.lineWidth = 4;
         this.ctx.beginPath();
         this.ctx.moveTo(-this.cellSize / 2, 0);
@@ -197,7 +216,7 @@ export class Renderer {
     }
 
     drawCross(powered) {
-        this.ctx.strokeStyle = powered ? '#FFD700' : '#666';
+        this.ctx.strokeStyle = powered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.lineWidth = 4;
         this.ctx.beginPath();
         this.ctx.moveTo(-this.cellSize / 2, 0);
@@ -253,14 +272,14 @@ export class Renderer {
 
         // Draw vertical wire segments with gap (goes "under")
         // Top segment
-        this.ctx.strokeStyle = topPowered ? '#FFD700' : '#666';
+        this.ctx.strokeStyle = topPowered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.beginPath();
         this.ctx.moveTo(0, -halfSize);
         this.ctx.lineTo(0, -gap);
         this.ctx.stroke();
 
         // Bottom segment
-        this.ctx.strokeStyle = bottomPowered ? '#FFD700' : '#666';
+        this.ctx.strokeStyle = bottomPowered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.beginPath();
         this.ctx.moveTo(0, gap);
         this.ctx.lineTo(0, halfSize);
@@ -268,14 +287,14 @@ export class Renderer {
 
         // Draw horizontal wire segments (on top, continuous line)
         // Left segment
-        this.ctx.strokeStyle = leftPowered ? '#FFD700' : '#666';
+        this.ctx.strokeStyle = leftPowered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.beginPath();
         this.ctx.moveTo(-halfSize, 0);
         this.ctx.lineTo(0, 0);
         this.ctx.stroke();
 
         // Right segment
-        this.ctx.strokeStyle = rightPowered ? '#FFD700' : '#666';
+        this.ctx.strokeStyle = rightPowered ? this.tileTheme.wirePowered : this.tileTheme.wireUnpowered;
         this.ctx.beginPath();
         this.ctx.moveTo(0, 0);
         this.ctx.lineTo(halfSize, 0);
@@ -305,7 +324,7 @@ export class Renderer {
 
     // Draw a rail track
     drawRail(rail) {
-        this.ctx.strokeStyle = 'rgba(102, 126, 234, 0.4)';
+        this.ctx.strokeStyle = this.tileTheme.railTrack;
         this.ctx.lineWidth = 2;
         this.ctx.setLineDash([5, 5]);
 
@@ -321,7 +340,7 @@ export class Renderer {
 
             // Draw end caps
             this.ctx.setLineDash([]);
-            this.ctx.fillStyle = 'rgba(102, 126, 234, 0.6)';
+            this.ctx.fillStyle = this.tileTheme.railCap;
             this.ctx.fillRect(x1 - 3, y - 8, 6, 16);
             this.ctx.fillRect(x2 - 3, y - 8, 6, 16);
         } else if (rail.type === 'vertical') {
@@ -336,7 +355,7 @@ export class Renderer {
 
             // Draw end caps
             this.ctx.setLineDash([]);
-            this.ctx.fillStyle = 'rgba(102, 126, 234, 0.6)';
+            this.ctx.fillStyle = this.tileTheme.railCap;
             this.ctx.fillRect(x - 8, y1 - 3, 16, 6);
             this.ctx.fillRect(x - 8, y2 - 3, 16, 6);
         }
@@ -350,12 +369,12 @@ export class Renderer {
         const py = this.offsetY + tile.y * this.cellSize;
 
         // Draw subtle border
-        this.ctx.strokeStyle = 'rgba(102, 126, 234, 0.8)';
+        this.ctx.strokeStyle = this.tileTheme.draggableBorder;
         this.ctx.lineWidth = 3;
         this.ctx.strokeRect(px + 2, py + 2, this.cellSize - 4, this.cellSize - 4);
 
         // Draw drag icon in corner
-        this.ctx.fillStyle = 'rgba(102, 126, 234, 0.9)';
+        this.ctx.fillStyle = this.tileTheme.draggableBorder;
         this.ctx.font = 'bold 14px Arial';
         this.ctx.textAlign = 'right';
         this.ctx.textBaseline = 'bottom';

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paper Puzzle – Create Custom Level</title>
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    .creator-wrap {
+      max-width: 860px;
+      margin: 80px auto 48px;
+      padding: 0 20px;
+    }
+
+    .creator-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 640px) {
+      .creator-grid { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+
+    .panel-title {
+      font-size: 0.78em;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 18px;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed rgba(255,255,255,0.22);
+      border-radius: 10px;
+      padding: 30px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      user-select: none;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: rgba(102,126,234,0.65);
+      background: rgba(102,126,234,0.07);
+      color: var(--text);
+    }
+    .drop-zone .dz-icon { font-size: 2.2em; margin-bottom: 8px; }
+    .drop-zone .dz-main { font-size: 0.92em; margin: 4px 0; }
+    .drop-zone .dz-hint { font-size: 0.78em; color: rgba(255,255,255,0.28); margin-top: 6px; }
+    #fileInput { display: none; }
+
+    .preview-wrap { display: none; text-align: center; margin-top: 10px; }
+    .preview-wrap.visible { display: block; }
+    #previewCanvas {
+      border-radius: 8px;
+      max-width: 100%;
+      border: 1px solid var(--panel-border);
+    }
+    .preview-label { font-size: 0.78em; color: var(--text-muted); margin-top: 6px; }
+
+    /* Form fields */
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 0.82em;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--panel-border);
+      color: var(--text);
+      padding: 9px 13px;
+      border-radius: var(--btn-radius);
+      font-family: inherit;
+      font-size: 0.93em;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus { border-color: rgba(102,126,234,0.55); }
+    .field select option { background: #1a1a2e; color: #fff; }
+    .field textarea { resize: vertical; min-height: 68px; }
+
+    .no-img-note {
+      display: none;
+      font-size: 0.82em;
+      color: #ff9966;
+      margin-top: 8px;
+      text-align: center;
+    }
+    .no-img-note.visible { display: block; }
+
+    /* Result panel */
+    .result-panel {
+      display: none;
+      background: rgba(50,200,100,0.06);
+      border: 1px solid rgba(50,200,100,0.28);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .result-panel.visible { display: block; }
+    .result-title {
+      font-size: 0.9em;
+      font-weight: 700;
+      color: #80e8a0;
+      margin-bottom: 14px;
+    }
+    .url-row {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      margin-bottom: 14px;
+    }
+    .url-box {
+      flex: 1;
+      background: rgba(0,0,0,0.38);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--btn-radius);
+      padding: 9px 13px;
+      font-size: 0.78em;
+      color: var(--text-muted);
+      font-family: monospace;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: text;
+      user-select: all;
+    }
+    .action-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .win-preview-box {
+      margin-top: 14px;
+      padding: 12px 16px;
+      background: rgba(255,215,0,0.06);
+      border: 1px solid rgba(255,215,0,0.18);
+      border-radius: 8px;
+      font-size: 0.84em;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .win-preview-box strong { color: #FFD700; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="./" class="btn btn-sm btn-ghost">← Back</a>
+    <span class="nav-title">Create Custom Puzzle</span>
+  </nav>
+
+  <div class="creator-wrap">
+
+    <div class="creator-grid">
+
+      <!-- Left: image -->
+      <div class="panel">
+        <p class="panel-title">Image</p>
+
+        <div class="drop-zone" id="dropZone">
+          <div class="dz-icon">🖼️</div>
+          <p class="dz-main">Drop an image here</p>
+          <p class="dz-main">or click to browse</p>
+          <p class="dz-hint">PNG · JPG · GIF · WebP</p>
+        </div>
+        <input type="file" id="fileInput" accept="image/*">
+
+        <div class="preview-wrap" id="previewWrap">
+          <canvas id="previewCanvas"></canvas>
+          <p class="preview-label" id="previewLabel"></p>
+        </div>
+      </div>
+
+      <!-- Right: settings -->
+      <div class="panel">
+        <p class="panel-title">Settings</p>
+
+        <div class="field">
+          <label for="puzzleName">Puzzle name</label>
+          <input type="text" id="puzzleName" placeholder="My Puzzle" maxlength="48">
+        </div>
+
+        <div class="field">
+          <label for="winTitle">Win screen title</label>
+          <input type="text" id="winTitle" placeholder="Puzzle Complete!" maxlength="64">
+        </div>
+
+        <div class="field">
+          <label for="winMsg">Win screen message</label>
+          <textarea id="winMsg" placeholder="You solved it!"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="difficulty">Difficulty</label>
+          <select id="difficulty">
+            <option value="7">Easy  (~14 pieces)</option>
+            <option value="11" selected>Medium (~22 pieces)</option>
+            <option value="18">Hard  (~38 pieces)</option>
+          </select>
+        </div>
+
+        <button class="btn btn-gold" id="generateBtn" style="width:100%">
+          Generate Share Link →
+        </button>
+        <p class="no-img-note" id="noImgNote">Please upload an image first.</p>
+      </div>
+
+    </div>
+
+    <!-- Result -->
+    <div class="result-panel" id="resultPanel">
+      <p class="result-title">✓ Your puzzle link is ready — share it with anyone</p>
+      <div class="url-row">
+        <div class="url-box" id="urlBox"></div>
+        <button class="btn btn-sm" id="copyBtn">Copy</button>
+      </div>
+      <div class="action-row">
+        <a class="btn btn-gold" id="openBtn" target="_blank">Open Puzzle →</a>
+        <button class="btn btn-ghost btn-sm" id="regenBtn">New seed</button>
+      </div>
+      <div class="win-preview-box" id="winPreviewBox"></div>
+    </div>
+
+  </div>
+
+  <script>
+    // ── Image state ────────────────────────────────────────────────────────────
+    let imageDataUrl = null;
+    let imgW = 0, imgH = 0;
+
+    // ── Drop zone / file input ─────────────────────────────────────────────────
+    const dropZone  = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) readFile(file);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) readFile(fileInput.files[0]);
+    });
+
+    function readFile(file) {
+      const reader = new FileReader();
+      reader.onload = e => processImage(e.target.result);
+      reader.readAsDataURL(file);
+    }
+
+    function processImage(src) {
+      const raw = new Image();
+      raw.onload = () => {
+        const MAX = 400;
+        const scale = Math.min(1, MAX / raw.width, MAX / raw.height);
+        imgW = Math.round(raw.width  * scale);
+        imgH = Math.round(raw.height * scale);
+
+        // Encode to JPEG at 0.65 quality for compact URL
+        const enc = document.createElement('canvas');
+        enc.width = imgW; enc.height = imgH;
+        enc.getContext('2d').drawImage(raw, 0, 0, imgW, imgH);
+        imageDataUrl = enc.toDataURL('image/jpeg', 0.65);
+
+        // Preview (max 240 px wide)
+        const pv = document.getElementById('previewCanvas');
+        const ps = Math.min(1, 240 / imgW, 180 / imgH);
+        pv.width  = Math.round(imgW * ps);
+        pv.height = Math.round(imgH * ps);
+        pv.getContext('2d').drawImage(raw, 0, 0, pv.width, pv.height);
+        document.getElementById('previewLabel').textContent = `${imgW} × ${imgH} px`;
+        document.getElementById('previewWrap').classList.add('visible');
+        document.getElementById('noImgNote').classList.remove('visible');
+
+        dropZone.querySelector('.dz-main').textContent = '✓ Loaded — drop another to replace';
+      };
+      raw.src = src;
+    }
+
+    // ── Encode ─────────────────────────────────────────────────────────────────
+    function encodeLevel(obj) {
+      const bytes = new TextEncoder().encode(JSON.stringify(obj));
+      let bin = '';
+      for (const b of bytes) bin += String.fromCharCode(b);
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ── Generate ───────────────────────────────────────────────────────────────
+    function generate() {
+      if (!imageDataUrl) {
+        document.getElementById('noImgNote').classList.add('visible');
+        return;
+      }
+
+      const name      = document.getElementById('puzzleName').value.trim() || 'Custom Puzzle';
+      const winTitle  = document.getElementById('winTitle').value.trim()   || 'Puzzle Complete!';
+      const winMsg    = document.getElementById('winMsg').value.trim()     || 'You solved it!';
+      const numPoints = +document.getElementById('difficulty').value;
+
+      const data = {
+        name, winTitle, winMsg, numPoints,
+        imageW: imgW,
+        imageH: imgH,
+        seed: 'c-' + Math.random().toString(36).slice(2, 10),
+        img:  imageDataUrl,
+      };
+
+      const encoded = encodeLevel(data);
+      const gameUrl = location.href.replace(/\/[^/]*$/, '/game.html');
+      const url = gameUrl.split('#')[0] + '#custom=' + encoded;
+
+      document.getElementById('urlBox').textContent  = url;
+      document.getElementById('openBtn').href        = url;
+      document.getElementById('winPreviewBox').innerHTML =
+        `Win screen: <strong>${escHtml(winTitle)}</strong><br>${escHtml(winMsg)}`;
+      document.getElementById('resultPanel').classList.add('visible');
+      document.getElementById('resultPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    document.getElementById('generateBtn').addEventListener('click', generate);
+    document.getElementById('regenBtn').addEventListener('click', generate);
+
+    // ── Copy ───────────────────────────────────────────────────────────────────
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const url = document.getElementById('urlBox').textContent;
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = document.getElementById('copyBtn');
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 1800);
+      });
+    });
+  </script>
+</body>
+</html>

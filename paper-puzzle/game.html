@@ -11,8 +11,8 @@
 
     <!-- Nav bar -->
     <nav class="nav">
-      <a href="./" class="btn btn-sm btn-ghost">← Back</a>
-      <span class="nav-title">Paper Puzzle</span>
+      <a href="./" id="navBack" class="btn btn-sm btn-ghost">← Back</a>
+      <span class="nav-title" id="navTitle">Paper Puzzle</span>
       <div class="game-controls">
         <select id="levelSelect" class="level-select" aria-label="Choose level"></select>
         <button id="resetBtn" class="btn btn-sm">Reset</button>
@@ -29,7 +29,7 @@
   <!-- Win overlay -->
   <div id="winOverlay" class="win-overlay hidden">
     <div class="win-card">
-      <h2>🎉 Puzzle Complete!</h2>
+      <h2 id="winTitle">🎉 Puzzle Complete!</h2>
       <p id="winMsg">All pieces are in place!</p>
       <div class="win-btns">
         <button id="nextLevelBtn" class="btn btn-gold">Next Level →</button>
@@ -43,17 +43,39 @@
     import { PaperPuzzleRenderer } from './js/core/renderer.js';
     import { LEVELS } from './js/core/levels.js';
 
+    // ── Custom level from URL hash ─────────────────────────────────────────────
+
+    function decodeCustomLevel(str) {
+      let b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return JSON.parse(new TextDecoder().decode(bytes));
+    }
+
+    let customLevel = null;
+    const hashMatch = location.hash.match(/^#custom=(.+)$/);
+    if (hashMatch) {
+      try {
+        const data = decodeCustomLevel(hashMatch[1]);
+        const img = new Image();
+        img.src = data.img;
+        customLevel = {
+          ...data,
+          drawImage(ctx, w, h) { ctx.drawImage(img, 0, 0, w, h); },
+        };
+      } catch (_) { /* bad hash — fall through to normal mode */ }
+    }
+
     // ── Canvas & sizing ────────────────────────────────────────────────────────
 
     const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
 
-    // Pick a canvas size that fills the usable window area
     function sizeCanvas() {
       const area = canvas.parentElement;
       const maxW = area.clientWidth  - 24;
       const maxH = area.clientHeight - 24;
-      // Maintain 16:10 aspect up to these limits
       const aspect = 16 / 10;
       let cw = maxW;
       let ch = Math.round(cw / aspect);
@@ -73,11 +95,10 @@
 
     function loadLevel(idx) {
       levelIdx = idx;
-      const def = LEVELS[idx];
+      const def = idx === -1 ? customLevel : LEVELS[idx];
 
       sizeCanvas();
 
-      // Scale the image to fill ~90% of the canvas while preserving aspect ratio
       const sc = Math.min(
         canvas.width  * 0.90 / def.imageW,
         canvas.height * 0.88 / def.imageH,
@@ -90,7 +111,6 @@
 
       engine = new PaperPuzzleEngine(level);
 
-      // Centre the puzzle on the canvas
       const puzzleX = Math.round((canvas.width  - level.imageW) / 2);
       const puzzleY = Math.round((canvas.height - level.imageH) / 2);
 
@@ -101,8 +121,16 @@
       renderer.setPuzzleOrigin(puzzleX, puzzleY);
 
       document.getElementById('winOverlay').classList.add('hidden');
-      document.getElementById('nextLevelBtn').style.display =
-        idx < LEVELS.length - 1 ? '' : 'none';
+
+      if (idx === -1) {
+        // Custom level: hide level navigation, set custom win text
+        document.getElementById('nextLevelBtn').style.display = 'none';
+        document.getElementById('winTitle').textContent = def.winTitle || '🎉 Puzzle Complete!';
+        document.getElementById('winMsg').textContent   = def.winMsg   || 'You solved it!';
+      } else {
+        document.getElementById('nextLevelBtn').style.display =
+          idx < LEVELS.length - 1 ? '' : 'none';
+      }
 
       if (rafId) cancelAnimationFrame(rafId);
       loop(performance.now());
@@ -178,7 +206,6 @@
     // ── Snap / completion handling ─────────────────────────────────────────────
 
     function handleSnap() {
-      // Find the piece that just snapped (it has the highest z among snapped)
       const justSnapped = engine.pieces.filter(p => p.snapped)
         .reduce((a, b) => a.z > b.z ? a : b, null);
       if (justSnapped) renderer.recordSnap(justSnapped, performance.now());
@@ -193,13 +220,21 @@
     // ── UI wiring ──────────────────────────────────────────────────────────────
 
     const select = document.getElementById('levelSelect');
-    LEVELS.forEach((lv, i) => {
-      const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = `${lv.id}. ${lv.name} (${lv.difficulty})`;
-      select.appendChild(opt);
-    });
-    select.addEventListener('change', () => loadLevel(+select.value));
+
+    if (customLevel) {
+      // Custom level mode: strip nav down to just title + reset
+      document.getElementById('navBack').style.display  = 'none';
+      document.getElementById('navTitle').textContent   = customLevel.name || 'Custom Puzzle';
+      document.getElementById('levelSelect').style.display = 'none';
+    } else {
+      LEVELS.forEach((lv, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${lv.id}. ${lv.name} (${lv.difficulty})`;
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', () => loadLevel(+select.value));
+    }
 
     document.getElementById('resetBtn').addEventListener('click', () => {
       engine.reset(canvas.width, canvas.height);
@@ -227,12 +262,16 @@
       resizeTimer = setTimeout(() => loadLevel(levelIdx), 200);
     });
 
-    // ── Check URL for level param ──────────────────────────────────────────────
+    // ── Start ──────────────────────────────────────────────────────────────────
 
-    const urlLevel = new URLSearchParams(location.search).get('level');
-    const startIdx = urlLevel ? Math.min(Math.max(0, +urlLevel - 1), LEVELS.length - 1) : 0;
-    select.value = startIdx;
-    loadLevel(startIdx);
+    if (customLevel) {
+      loadLevel(-1);
+    } else {
+      const urlLevel = new URLSearchParams(location.search).get('level');
+      const startIdx = urlLevel ? Math.min(Math.max(0, +urlLevel - 1), LEVELS.length - 1) : 0;
+      select.value = startIdx;
+      loadLevel(startIdx);
+    }
   </script>
 </body>
 </html>

@@ -24,6 +24,10 @@ function ptInTri(p, a, b, c) {
   return s(a, b) >= 0 && s(b, c) >= 0 && s(c, a) >= 0;
 }
 
+function triArea(a, b, c) {
+  return Math.abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) / 2;
+}
+
 // Ray-casting point-in-polygon — works for any simple polygon (tri, quad, etc.)
 function ptInPoly(px, py, verts) {
   let inside = false;
@@ -109,13 +113,21 @@ export class PaperPuzzleEngine {
       tris.push([sideA, bp, apex], [bp, sideB, apex]);
     }
 
-    // Interior points — inserted by splitting their containing triangle into 3
+    // Interior points — inserted by splitting their containing triangle into 3.
+    // Skip any point whose insertion would produce a sub-triangle smaller than
+    // 10 % of the parent (prevents hairline slivers from near-edge placement).
     for (let i = 0; i < N; i++) {
       const p = { x: margin + rng() * (W - 2 * margin), y: margin + rng() * (H - 2 * margin), idx: verts.length };
-      verts.push(p);
       const hit = tris.findIndex(t => ptInTri(p, t[0], t[1], t[2]));
       if (hit === -1) continue;
-      const [t] = tris.splice(hit, 1);
+      const t = tris[hit];
+      const parentArea = triArea(t[0], t[1], t[2]);
+      const minSub = parentArea * 0.10;
+      if (triArea(t[0], t[1], p) < minSub ||
+          triArea(t[1], t[2], p) < minSub ||
+          triArea(t[2], t[0], p) < minSub) continue;
+      verts.push(p);
+      tris.splice(hit, 1);
       tris.push([t[0], t[1], p], [t[1], t[2], p], [t[2], t[0], p]);
     }
 

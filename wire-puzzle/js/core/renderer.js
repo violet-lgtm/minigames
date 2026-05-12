@@ -209,39 +209,64 @@ export class Renderer {
 
     drawBridge(powered, tile, engine) {
         const gap = this.cellSize * 0.15;
+        const halfSize = this.cellSize / 2;
 
         this.ctx.lineWidth = 4;
 
-        // Determine which wires are actually powered by checking power flow directions
-        let horizontalPowered = false;
-        let verticalPowered = false;
+        // Determine which specific wire segments should be powered
+        let leftPowered = false;
+        let rightPowered = false;
+        let topPowered = false;
+        let bottomPowered = false;
 
-        if (powered && tile && tile.powerDirections) {
-            // Check if power entered from horizontal directions (left or right)
-            if (tile.powerDirections.has('left') || tile.powerDirections.has('right')) {
-                horizontalPowered = true;
+        if (powered && tile && tile.powerDirections && engine) {
+            // Check each direction's power status
+            if (tile.powerDirections.has('left')) {
+                leftPowered = true;
+                rightPowered = true; // Power flows through to the other side
             }
-
-            // Check if power entered from vertical directions (top or bottom)
-            if (tile.powerDirections.has('top') || tile.powerDirections.has('bottom')) {
-                verticalPowered = true;
+            if (tile.powerDirections.has('right')) {
+                leftPowered = true;
+                rightPowered = true;
+            }
+            if (tile.powerDirections.has('top')) {
+                topPowered = true;
+                bottomPowered = true;
+            }
+            if (tile.powerDirections.has('bottom')) {
+                topPowered = true;
+                bottomPowered = true;
             }
         }
 
-        // Draw vertical wire with gap (goes "under")
-        this.ctx.strokeStyle = verticalPowered ? '#FFD700' : '#666';
+        // Draw vertical wire segments with gap (goes "under")
+        // Top segment
+        this.ctx.strokeStyle = topPowered ? '#FFD700' : '#666';
         this.ctx.beginPath();
-        this.ctx.moveTo(0, -this.cellSize / 2);
+        this.ctx.moveTo(0, -halfSize);
         this.ctx.lineTo(0, -gap);
-        this.ctx.moveTo(0, gap);
-        this.ctx.lineTo(0, this.cellSize / 2);
         this.ctx.stroke();
 
-        // Draw horizontal wire on top (continuous)
-        this.ctx.strokeStyle = horizontalPowered ? '#FFD700' : '#666';
+        // Bottom segment
+        this.ctx.strokeStyle = bottomPowered ? '#FFD700' : '#666';
         this.ctx.beginPath();
-        this.ctx.moveTo(-this.cellSize / 2, 0);
-        this.ctx.lineTo(this.cellSize / 2, 0);
+        this.ctx.moveTo(0, gap);
+        this.ctx.lineTo(0, halfSize);
+        this.ctx.stroke();
+
+        // Draw horizontal wire segments (on top, continuous line)
+        // Left segment
+        this.ctx.strokeStyle = leftPowered ? '#FFD700' : '#666';
+        this.ctx.beginPath();
+        this.ctx.moveTo(-halfSize, 0);
+        this.ctx.lineTo(0, 0);
+        this.ctx.stroke();
+
+        // Right segment
+        this.ctx.strokeStyle = rightPowered ? '#FFD700' : '#666';
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, 0);
+        this.ctx.lineTo(halfSize, 0);
         this.ctx.stroke();
     }
 

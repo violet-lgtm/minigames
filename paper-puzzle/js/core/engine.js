@@ -232,7 +232,7 @@ export class PaperPuzzleEngine {
     const pts = [];
     for (let i = 0; i <= n; i++) {
       const t = i / n;
-      const off = (i > 0 && i < n) ? (rng() - 0.5) * 54 : 0;
+      const off = (i > 0 && i < n) ? (rng() - 0.5) * 28 : 0;
       pts.push({ x: va.x + t * dx + off * perpX, y: va.y + t * dy + off * perpY });
     }
     for (let i = 1; i < pts.length - 1; i++) {

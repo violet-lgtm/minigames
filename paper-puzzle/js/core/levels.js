@@ -43,7 +43,7 @@ export const LEVELS = [
     difficulty: 'Easy',
     imageW: 340,
     imageH: 340,
-    numPoints: 3,
+    numPoints: 7,
     drawImage(ctx, w, h) {
       // Sky
       const sky = ctx.createLinearGradient(0, 0, 0, h * 0.72);
@@ -99,7 +99,7 @@ export const LEVELS = [
     difficulty: 'Easy',
     imageW: 340,
     imageH: 340,
-    numPoints: 3,
+    numPoints: 7,
     drawImage(ctx, w, h) {
       // Night sky gradient
       const sky = ctx.createLinearGradient(0, 0, 0, h * 0.78);
@@ -154,7 +154,7 @@ export const LEVELS = [
     difficulty: 'Medium',
     imageW: 420,
     imageH: 300,
-    numPoints: 5,
+    numPoints: 11,
     drawImage(ctx, w, h) {
       // Sky
       const sky = ctx.createLinearGradient(0, 0, 0, h * 0.52);
@@ -228,7 +228,7 @@ export const LEVELS = [
     difficulty: 'Medium',
     imageW: 300,
     imageH: 420,
-    numPoints: 5,
+    numPoints: 11,
     drawImage(ctx, w, h) {
       const mid = h * 0.5; // water line
 
@@ -330,7 +330,7 @@ export const LEVELS = [
     difficulty: 'Hard',
     imageW: 400,
     imageH: 400,
-    numPoints: 8,
+    numPoints: 18,
     drawImage(ctx, w, h) {
       // Sky (barely visible through canopy)
       ctx.fillStyle = '#b3cde0';

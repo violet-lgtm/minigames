@@ -94,6 +94,25 @@ export const themes = {
             '--panel-bg': 'rgba(76, 222, 128, 0.05)',
             '--panel-border': 'rgba(76, 222, 128, 0.1)'
         }
+    },
+    blueprint: {
+        name: 'Blueprint',
+        colors: {
+            '--bg-gradient-start': '#0d2847',
+            '--bg-gradient-end': '#1a3a5f',
+            '--primary-color': '#ffffff',
+            '--primary-gradient-start': '#ffffff',
+            '--primary-gradient-end': '#e0f0ff',
+            '--secondary-gradient-start': '#4a90e2',
+            '--secondary-gradient-end': '#2874d0',
+            '--accent-color': '#6db3f2',
+            '--text-primary': '#ffffff',
+            '--text-secondary': '#b8d4f0',
+            '--canvas-border': '#6db3f2',
+            '--canvas-bg': '#0a1f3d',
+            '--panel-bg': 'rgba(255, 255, 255, 0.08)',
+            '--panel-border': 'rgba(255, 255, 255, 0.2)'
+        }
     }
 };
 

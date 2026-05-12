@@ -157,33 +157,33 @@ export const themes = {
     },
     blueprint: {
         name: 'Blueprint',
-        backgroundImage: 'data:image/svg+xml,%3Csvg width="100" height="100" xmlns="http://www.w3.org/2000/svg"%3E%3Cdefs%3E%3Cpattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"%3E%3Cpath d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="0.5"/%3E%3C/pattern%3E%3C/defs%3E%3Crect width="100" height="100" fill="%230d2847"/%3E%3Crect width="100" height="100" fill="url(%23grid)"/%3E%3C/svg%3E',
+        backgroundImage: 'data:image/svg+xml,%3Csvg width="200" height="200" xmlns="http://www.w3.org/2000/svg"%3E%3Cdefs%3E%3Cpattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse"%3E%3Cpath d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(109,179,242,0.08)" stroke-width="0.5"/%3E%3C/pattern%3E%3Cpattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"%3E%3Crect width="100" height="100" fill="url(%23smallGrid)"/%3E%3Cpath d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(109,179,242,0.15)" stroke-width="1"/%3E%3C/pattern%3E%3C/defs%3E%3Crect width="200" height="200" fill="%23082542"/%3E%3Crect width="200" height="200" fill="url(%23grid)"/%3E%3C/svg%3E',
         colors: {
-            '--bg-gradient-start': '#0d2847',
-            '--bg-gradient-end': '#1a3a5f',
+            '--bg-gradient-start': '#082542',
+            '--bg-gradient-end': '#0d3a5f',
             '--primary-color': '#ffffff',
             '--primary-gradient-start': '#ffffff',
-            '--primary-gradient-end': '#e0f0ff',
+            '--primary-gradient-end': '#d0e8ff',
             '--secondary-gradient-start': '#4a90e2',
             '--secondary-gradient-end': '#2874d0',
             '--accent-color': '#6db3f2',
             '--text-primary': '#ffffff',
             '--text-secondary': '#b8d4f0',
             '--canvas-border': '#6db3f2',
-            '--canvas-bg': '#0a1f3d',
-            '--panel-bg': 'rgba(255, 255, 255, 0.08)',
-            '--panel-border': 'rgba(255, 255, 255, 0.2)'
+            '--canvas-bg': '#051829',
+            '--panel-bg': 'rgba(109, 179, 242, 0.12)',
+            '--panel-border': 'rgba(109, 179, 242, 0.3)'
         },
         tiles: {
             wirePowered: '#ffffff',
-            wireUnpowered: '#4a6b8a',
-            gridLine: 'rgba(109, 179, 242, 0.2)',
-            canvasBg: '#0a1f3d',
-            poweredGlow: 'rgba(255, 255, 255, 0.15)',
+            wireUnpowered: '#3a6b8a',
+            gridLine: 'rgba(109, 179, 242, 0.15)',
+            canvasBg: '#051829',
+            poweredGlow: 'rgba(255, 255, 255, 0.12)',
             lockIcon: '#ffffff',
-            railTrack: 'rgba(109, 179, 242, 0.5)',
+            railTrack: 'rgba(109, 179, 242, 0.4)',
             railCap: 'rgba(109, 179, 242, 0.7)',
-            draggableBorder: 'rgba(109, 179, 242, 0.9)'
+            draggableBorder: 'rgba(109, 179, 242, 0.85)'
         }
     }
 };

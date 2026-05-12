@@ -307,7 +307,6 @@
 
         // Initialize theme manager
         const themeManager = new ThemeManager();
-        initializeThemeSelector();
 
         initializeEditor();
 
@@ -323,6 +322,7 @@
             }
 
             createTilePalette();
+            initializeThemeSelector();
             setupEventListeners();
             render();
         }

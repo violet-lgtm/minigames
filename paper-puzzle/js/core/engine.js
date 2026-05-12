@@ -28,6 +28,17 @@ function triArea(a, b, c) {
   return Math.abs((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) / 2;
 }
 
+// Shoelace area for an arbitrary polygon
+function polyArea(poly) {
+  let a = 0;
+  const n = poly.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    a += poly[i].x * poly[j].y - poly[j].x * poly[i].y;
+  }
+  return Math.abs(a) / 2;
+}
+
 // Ray-casting point-in-polygon — works for any simple polygon (tri, quad, etc.)
 function ptInPoly(px, py, verts) {
   let inside = false;
@@ -144,6 +155,9 @@ export class PaperPuzzleEngine {
     const mergeRng = seededRng(seed + '_merge');
     const finalPolys = this._mergeTriangles(tris, triEdgeCnt, mergeRng);
 
+    // Absorb any sliver pieces into their largest neighbour
+    this._removeSlivers(finalPolys, W, H);
+
     // Recount edges across the final (mixed tri/quad) polygon set
     const polyEdgeCnt = new Map();
     for (const poly of finalPolys) {
@@ -256,6 +270,70 @@ export class PaperPuzzleEngine {
       if (!used.has(i)) result.push(tris[i]);
     }
     return result;
+  }
+
+  // Merge any polygon whose area is below threshold into the neighbour that
+  // shares its longest edge.  Modifies polys in-place.
+  _removeSlivers(polys, W, H) {
+    const minArea = (W * H) / 200;
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let i = polys.length - 1; i >= 0; i--) {
+        if (polyArea(polys[i]) >= minArea) continue;
+
+        const sliver = polys[i];
+        const m = sliver.length;
+
+        // Pick the longest edge shared with any neighbour
+        let bestJ = -1, bestEdge = -1, bestLen = -1;
+        for (let ea = 0; ea < m; ea++) {
+          const sA = sliver[ea], sB = sliver[(ea + 1) % m];
+          const edgeLen = Math.hypot(sB.x - sA.x, sB.y - sA.y);
+          if (edgeLen <= bestLen) continue;
+          for (let j = 0; j < polys.length; j++) {
+            if (j === i) continue;
+            const nb = polys[j], nn = nb.length;
+            for (let eb = 0; eb < nn; eb++) {
+              const c = nb[eb], d = nb[(eb + 1) % nn];
+              if ((c === sA && d === sB) || (c === sB && d === sA)) {
+                bestLen = edgeLen; bestJ = j; bestEdge = ea;
+              }
+            }
+          }
+        }
+        if (bestJ === -1) continue; // all edges are border — can't merge
+
+        const sA = sliver[bestEdge], sB = sliver[(bestEdge + 1) % m];
+        const nb = polys[bestJ], nn = nb.length;
+
+        // Locate shared edge in neighbour and note its direction
+        let insertPos = -1, reversed = false;
+        for (let eb = 0; eb < nn; eb++) {
+          const c = nb[eb], d = nb[(eb + 1) % nn];
+          if (c === sA && d === sB) { insertPos = eb; reversed = false; break; }
+          if (c === sB && d === sA) { insertPos = eb; reversed = true;  break; }
+        }
+        if (insertPos === -1) continue;
+
+        // Outer vertices of sliver (not on shared edge), CW from sB→sA
+        const outer = [];
+        for (let k = 1; k < m - 1; k++) {
+          outer.push(sliver[(bestEdge + k + 1) % m]);
+        }
+        // reversed=false means neighbour traverses sA→sB, so we must walk sA→(reversed outer)→sB
+        if (!reversed) outer.reverse();
+
+        polys[bestJ] = [
+          ...nb.slice(0, insertPos + 1),
+          ...outer,
+          ...nb.slice(insertPos + 1),
+        ];
+        polys.splice(i, 1);
+        changed = true;
+        break; // restart — indices shifted
+      }
+    }
   }
 
   // World-space torn-edge points from va to vb (canonical: va.idx < vb.idx)

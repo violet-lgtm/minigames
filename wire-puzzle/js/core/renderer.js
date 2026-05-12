@@ -220,22 +220,34 @@ export class Renderer {
         let bottomPowered = false;
 
         if (powered && tile && tile.powerDirections && engine) {
-            // Check each direction's power status
-            if (tile.powerDirections.has('left')) {
-                leftPowered = true;
-                rightPowered = true; // Power flows through to the other side
-            }
-            if (tile.powerDirections.has('right')) {
-                leftPowered = true;
-                rightPowered = true;
-            }
-            if (tile.powerDirections.has('top')) {
-                topPowered = true;
-                bottomPowered = true;
-            }
-            if (tile.powerDirections.has('bottom')) {
-                topPowered = true;
-                bottomPowered = true;
+            // Convert absolute directions to tile-relative directions based on rotation
+            const rotation = tile.rotation || 0;
+            const rotationSteps = rotation / 90;
+
+            // Helper to rotate direction back to tile's local coordinate system
+            const rotateDirectionInverse = (dir, steps) => {
+                const dirs = ['top', 'right', 'bottom', 'left'];
+                const index = dirs.indexOf(dir);
+                if (index === -1) return dir;
+                // Rotate backwards (counter-clockwise) to get tile-relative direction
+                const newIndex = (index - steps + 4) % 4;
+                return dirs[newIndex];
+            };
+
+            // Check each power direction and convert to tile-relative
+            for (const dir of tile.powerDirections) {
+                const localDir = rotateDirectionInverse(dir, rotationSteps);
+
+                if (localDir === 'left' || localDir === 'right') {
+                    // Horizontal wire is powered
+                    leftPowered = true;
+                    rightPowered = true;
+                }
+                if (localDir === 'top' || localDir === 'bottom') {
+                    // Vertical wire is powered
+                    topPowered = true;
+                    bottomPowered = true;
+                }
             }
         }
 

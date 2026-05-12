@@ -250,7 +250,7 @@
                         <li>Place exactly one ⚡ Power Source</li>
                         <li>Place at least one 💡 Light</li>
                         <li>Fill grid with wire tiles</li>
-                        <li>Use Rotate tool to orient all tiles (including power/light)</li>
+                        <li>Use Rotate tool to orient rotatable tiles (power, light, and bridge have fixed orientation)</li>
                         <li><strong>Optional:</strong> Add Rail by clicking-dragging, then Assign Rail to make tiles draggable</li>
                         <li>Test your level to ensure it's solvable</li>
                         <li>Save or export to share!</li>
@@ -558,14 +558,14 @@
 
                 tile.type = selectedTileType;
                 tile.rotation = 0;
-                tile.locked = (selectedTileType === 'power' || selectedTileType === 'light');
+                tile.locked = (selectedTileType === 'power' || selectedTileType === 'light' || selectedTileType === 'bridge');
             } else if (selectedTool === 'erase') {
                 tile.type = 'empty';
                 tile.rotation = 0;
                 tile.locked = false;
                 delete tile.railId; // Remove rail assignment
             } else if (selectedTool === 'rotate') {
-                if (tile.type !== 'empty') {
+                if (tile.type !== 'empty' && !tile.locked) {
                     tile.rotation = (tile.rotation + 90) % 360;
                 }
             } else if (selectedTool === 'assign-rail') {

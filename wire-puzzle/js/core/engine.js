@@ -18,7 +18,9 @@ export class GameEngine {
         // Ensure all tiles have required properties
         this.tiles.forEach(tile => {
             if (tile.rotation === undefined) tile.rotation = 0;
-            if (tile.locked === undefined) tile.locked = (tile.type === 'power' || tile.type === 'light');
+            if (tile.locked === undefined) {
+                tile.locked = (tile.type === 'power' || tile.type === 'light' || tile.type === 'bridge');
+            }
             tile.powered = false;
         });
     }

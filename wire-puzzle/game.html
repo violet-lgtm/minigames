@@ -322,7 +322,7 @@
             }
 
             const canvas = document.getElementById('gameCanvas');
-            renderer = new Renderer(canvas, level.gridSize);
+            renderer = new Renderer(canvas, level.gridSize, themeManager.getTileTheme());
             engine = new GameEngine(level);
 
             engine.onUpdate = updateUI;

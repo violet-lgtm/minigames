@@ -313,7 +313,7 @@
 
         function initializeEditor() {
             const canvas = document.getElementById('editorCanvas');
-            renderer = new Renderer(canvas, gridSize);
+            renderer = new Renderer(canvas, gridSize, themeManager.getTileTheme());
 
             // Initialize empty grid
             for (let y = 0; y < gridSize.height; y++) {
@@ -343,6 +343,12 @@
 
             selector.addEventListener('change', (e) => {
                 themeManager.applyTheme(e.target.value);
+                // Update renderer with new theme
+                if (renderer) {
+                    renderer.setTheme(themeManager.getTileTheme());
+                    createTilePalette(); // Recreate palette with new theme
+                    render();
+                }
             });
         }
 
@@ -361,7 +367,7 @@
                 canvas.width = 60;
                 canvas.height = 60;
                 const ctx = canvas.getContext('2d');
-                const tempRenderer = new Renderer(canvas, { width: 1, height: 1 });
+                const tempRenderer = new Renderer(canvas, { width: 1, height: 1 }, themeManager.getTileTheme());
                 tempRenderer.drawTile({ type, x: 0, y: 0, rotation: 0, powered: type === 'power' });
 
                 const label = document.createElement('span');
@@ -689,7 +695,7 @@
                 }
             }
 
-            renderer = new Renderer(document.getElementById('editorCanvas'), gridSize);
+            renderer = new Renderer(document.getElementById('editorCanvas'), gridSize, themeManager.getTileTheme());
             render();
         }
 
@@ -868,7 +874,7 @@
                 }
             });
 
-            renderer = new Renderer(document.getElementById('editorCanvas'), gridSize);
+            renderer = new Renderer(document.getElementById('editorCanvas'), gridSize, themeManager.getTileTheme());
             render();
             validateLevel();
         }

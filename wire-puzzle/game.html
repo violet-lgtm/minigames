@@ -129,8 +129,6 @@
     </style>
 </head>
 <body>
-    <a href="index.html" class="back-link">← Back to Menu</a>
-
     <div class="container game-container">
         <header>
             <h1 id="pageTitle">Play Wire Puzzle</h1>
@@ -147,7 +145,6 @@
                 <div class="controls">
                     <button class="btn btn-secondary" id="resetBtn">🔄 Reset</button>
                     <button class="btn btn-secondary" id="shareLevelBtn" style="display: none;">🔗 Share</button>
-                    <button class="btn btn-secondary" id="backBtn">← Back to Levels</button>
                 </div>
             </div>
 
@@ -190,7 +187,6 @@
             <div class="controls">
                 <button class="btn btn-primary" id="nextLevelBtn">Next Level →</button>
                 <button class="btn btn-secondary" id="replayBtn">🔄 Replay</button>
-                <button class="btn btn-secondary" id="menuBtn">← Back to Levels</button>
             </div>
         </div>
     </div>
@@ -226,7 +222,6 @@
                 levels = [level];
                 currentLevelIndex = 0;
                 document.getElementById('pageTitle').textContent = 'Shared Level';
-                document.getElementById('backBtn').textContent = '← Home';
                 startGame(level);
             } catch (error) {
                 console.error('Failed to load level from URL:', error);
@@ -238,7 +233,6 @@
             // Test mode - play test level immediately
             levels = [testLevel];
             currentLevelIndex = 0;
-            document.getElementById('backBtn').textContent = '✕ Close Tab';
             startGame(testLevel);
         } else if (mode === 'custom') {
             document.getElementById('pageTitle').textContent = 'Custom Levels';
@@ -472,14 +466,6 @@
             engine.reset();
         });
 
-        document.getElementById('backBtn').addEventListener('click', () => {
-            if (testLevel) {
-                window.close();
-            } else {
-                showLevelSelector();
-            }
-        });
-
         document.getElementById('shareLevelBtn').addEventListener('click', () => {
             if (!currentLevel) {
                 alert('No level to share!');
@@ -517,11 +503,6 @@
         document.getElementById('replayBtn').addEventListener('click', () => {
             document.getElementById('winModal').classList.remove('active');
             engine.reset();
-        });
-
-        document.getElementById('menuBtn').addEventListener('click', () => {
-            document.getElementById('winModal').classList.remove('active');
-            showLevelSelector();
         });
     </script>
 </body>

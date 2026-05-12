@@ -171,6 +171,12 @@
                         🎯 Solve in minimum moves!
                     </p>
                 </div>
+
+                <div class="info-panel">
+                    <h3>🎨 Theme</h3>
+                    <select id="themeSelector" style="width: 100%; padding: 10px; font-size: 1em; border-radius: 5px; background: rgba(0,0,0,0.3); color: #fff; border: 2px solid rgba(255,255,255,0.2);">
+                    </select>
+                </div>
             </div>
         </div>
     </div>
@@ -242,6 +248,33 @@
         } else {
             levels = builtInLevels;
             showLevelSelector();
+        }
+
+        // Initialize theme selector
+        initializeThemeSelector();
+
+        function initializeThemeSelector() {
+            const selector = document.getElementById('themeSelector');
+            const themes = themeManager.getThemeList();
+
+            themes.forEach(theme => {
+                const option = document.createElement('option');
+                option.value = theme.id;
+                option.textContent = theme.name;
+                if (theme.id === themeManager.currentTheme) {
+                    option.selected = true;
+                }
+                selector.appendChild(option);
+            });
+
+            selector.addEventListener('change', (e) => {
+                themeManager.applyTheme(e.target.value);
+                // Update renderer with new theme if game is active
+                if (renderer) {
+                    renderer.setTheme(themeManager.getTileTheme());
+                    updateUI();
+                }
+            });
         }
 
         function showLevelSelector() {

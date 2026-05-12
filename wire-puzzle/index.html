@@ -70,6 +70,12 @@
             </a>
         </div>
 
+        <div class="info-panel" style="max-width: 400px; margin: 30px auto;">
+            <h3>🎨 Theme</h3>
+            <select id="themeSelector" style="width: 100%; padding: 10px; font-size: 1em; border-radius: 5px; background: rgba(0,0,0,0.3); color: #fff; border: 2px solid rgba(255,255,255,0.2);">
+            </select>
+        </div>
+
         <ul class="feature-list">
             <li>8 built-in levels with increasing difficulty</li>
             <li>Create your own custom levels</li>
@@ -86,9 +92,28 @@
         // Initialize theme
         const themeManager = new ThemeManager();
 
+        // Initialize theme selector
+        const themeSelector = document.getElementById('themeSelector');
+        const themes = themeManager.getThemeList();
+
+        themes.forEach(theme => {
+            const option = document.createElement('option');
+            option.value = theme.id;
+            option.textContent = theme.name;
+            if (theme.id === themeManager.currentTheme) {
+                option.selected = true;
+            }
+            themeSelector.appendChild(option);
+        });
+
         // Draw an animated demo puzzle on the preview canvas
         const canvas = document.getElementById('previewCanvas');
         const renderer = new Renderer(canvas, { width: 3, height: 3 }, themeManager.getTileTheme());
+
+        themeSelector.addEventListener('change', (e) => {
+            themeManager.applyTheme(e.target.value);
+            renderer.setTheme(themeManager.getTileTheme());
+        });
 
         const demoTiles = [
             { type: 'power', x: 0, y: 1, rotation: 0, powered: true },

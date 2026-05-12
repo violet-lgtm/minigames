@@ -64,7 +64,7 @@ export class PaperPuzzleEngine {
     const { imageW: W, imageH: H, numPoints: N, seed } = this.level;
     const rng = seededRng(seed + '_mesh');
 
-    // Vertices: 4 corners + N random interior points
+    // Vertices: 4 corners, then boundary subdivision points, then N interior points
     const margin = Math.min(W, H) * 0.14;
     const verts = [
       { x: 0, y: 0, idx: 0 },
@@ -72,13 +72,6 @@ export class PaperPuzzleEngine {
       { x: W, y: H, idx: 2 },
       { x: 0, y: H, idx: 3 },
     ];
-    for (let i = 0; i < N; i++) {
-      verts.push({
-        x: margin + rng() * (W - 2 * margin),
-        y: margin + rng() * (H - 2 * margin),
-        idx: 4 + i,
-      });
-    }
 
     // Seed triangulation: two CW right-triangles covering the rectangle
     let tris = [
@@ -86,9 +79,40 @@ export class PaperPuzzleEngine {
       [verts[0], verts[2], verts[3]],
     ];
 
-    // Insert each interior vertex by splitting its containing triangle into 3
-    for (let i = 4; i < verts.length; i++) {
-      const p = verts[i];
+    // Insert one subdivision point per boundary edge via edge-splits.
+    // Without these, interior points near corners can produce triangles that
+    // share only a single corner vertex with the boundary instead of a full edge.
+    const borderSides = [
+      [verts[0], verts[1]],
+      [verts[1], verts[2]],
+      [verts[2], verts[3]],
+      [verts[3], verts[0]],
+    ];
+    for (const [sideA, sideB] of borderSides) {
+      const tv = 0.35 + rng() * 0.30;
+      const bp = {
+        x: sideA.x + tv * (sideB.x - sideA.x),
+        y: sideA.y + tv * (sideB.y - sideA.y),
+        idx: verts.length,
+      };
+      verts.push(bp);
+      const hitIdx = tris.findIndex(tri => {
+        const m = tri.length;
+        for (let e = 0; e < m; e++) {
+          if (tri[e] === sideA && tri[(e + 1) % m] === sideB) return true;
+        }
+        return false;
+      });
+      if (hitIdx === -1) { verts.pop(); continue; }
+      const [hit] = tris.splice(hitIdx, 1);
+      const apex = hit.find(v => v !== sideA && v !== sideB);
+      tris.push([sideA, bp, apex], [bp, sideB, apex]);
+    }
+
+    // Interior points — inserted by splitting their containing triangle into 3
+    for (let i = 0; i < N; i++) {
+      const p = { x: margin + rng() * (W - 2 * margin), y: margin + rng() * (H - 2 * margin), idx: verts.length };
+      verts.push(p);
       const hit = tris.findIndex(t => ptInTri(p, t[0], t[1], t[2]));
       if (hit === -1) continue;
       const [t] = tris.splice(hit, 1);

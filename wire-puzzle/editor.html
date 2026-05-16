@@ -751,7 +751,8 @@
                     }
                     return tileData;
                 }),
-                rails: rails.map(r => ({ ...r }))
+                rails: rails.map(r => ({ ...r })),
+                theme: themeManager.currentTheme
             };
         }
 
@@ -872,7 +873,14 @@
                 }
             });
 
+            // Apply saved theme if available
+            if (level.theme) {
+                themeManager.applyTheme(level.theme);
+                themeSelector.value = level.theme;
+            }
+
             renderer = new Renderer(document.getElementById('editorCanvas'), gridSize, themeManager.getTileTheme());
+            createTilePalette(); // Recreate palette with loaded theme
             render();
             validateLevel();
         }

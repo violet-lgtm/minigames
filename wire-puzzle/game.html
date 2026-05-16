@@ -346,6 +346,12 @@
             document.getElementById('gameArea').style.display = 'flex';
             document.getElementById('levelName').textContent = level.name;
 
+            // Apply saved theme if available
+            if (level.theme) {
+                themeManager.applyTheme(level.theme);
+                document.getElementById('themeSelector').value = level.theme;
+            }
+
             // Show share button for shared levels and custom levels
             const shareBtn = document.getElementById('shareLevelBtn');
             if (levelParam || mode === 'custom') {

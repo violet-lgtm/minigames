@@ -308,6 +308,30 @@
         // Initialize theme manager
         const themeManager = new ThemeManager();
 
+        // Initialize theme selector
+        const themeSelector = document.getElementById('themeSelector');
+        const themes = themeManager.getThemeList();
+
+        themes.forEach(theme => {
+            const option = document.createElement('option');
+            option.value = theme.id;
+            option.textContent = theme.name;
+            if (theme.id === themeManager.currentTheme) {
+                option.selected = true;
+            }
+            themeSelector.appendChild(option);
+        });
+
+        themeSelector.addEventListener('change', (e) => {
+            themeManager.applyTheme(e.target.value);
+            // Update renderer with new theme
+            if (renderer) {
+                renderer.setTheme(themeManager.getTileTheme());
+                createTilePalette(); // Recreate palette with new theme
+                render();
+            }
+        });
+
         initializeEditor();
 
         function initializeEditor() {
@@ -322,34 +346,8 @@
             }
 
             createTilePalette();
-            initializeThemeSelector();
             setupEventListeners();
             render();
-        }
-
-        function initializeThemeSelector() {
-            const selector = document.getElementById('themeSelector');
-            const themes = themeManager.getThemeList();
-
-            themes.forEach(theme => {
-                const option = document.createElement('option');
-                option.value = theme.id;
-                option.textContent = theme.name;
-                if (theme.id === themeManager.currentTheme) {
-                    option.selected = true;
-                }
-                selector.appendChild(option);
-            });
-
-            selector.addEventListener('change', (e) => {
-                themeManager.applyTheme(e.target.value);
-                // Update renderer with new theme
-                if (renderer) {
-                    renderer.setTheme(themeManager.getTileTheme());
-                    createTilePalette(); // Recreate palette with new theme
-                    render();
-                }
-            });
         }
 
         function createTilePalette() {

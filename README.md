@@ -21,6 +21,19 @@ A brain-teasing puzzle game where you rotate tiles with wires to connect a power
 
 **Play:** [Wire Puzzle](wire-puzzle/index.html)
 
+### 🧠 Mastermind
+A classic codebreaking game where you deduce a hidden colour code from feedback pips.
+
+**Features:**
+- 6 built-in levels from beginner to grandmaster
+- Highly customisable: code length, colour count, guess limit, duplicates
+- Custom pip shapes (circle, star, heart, diamond, hexagon and more)
+- Custom per-level win messages
+- Full level editor supporting random or fixed (set) solutions
+- Import/Export levels as JSON and share via link
+
+**Play:** [Mastermind](mastermind/index.html)
+
 ### Workflow Details
 
 The `.github/workflows/deploy-pages.yml` workflow:

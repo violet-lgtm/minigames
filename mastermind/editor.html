@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Mastermind - Level Editor</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .editor-wrap {
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        .info-panel h3 {
+            color: var(--primary-color);
+            margin-bottom: 12px;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .color-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+
+        .color-cell input[type="color"] {
+            width: 56px;
+            height: 40px;
+            border: 2px solid var(--panel-border);
+            border-radius: 6px;
+            background: none;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 12px 0;
+        }
+
+        .solution-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 14px 0;
+            min-height: 50px;
+        }
+
+        .solution-row .peg-slot { cursor: pointer; }
+        .solution-row .peg-slot:hover { transform: scale(1.08); }
+
+        .shape-preview {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 8px;
+        }
+
+        .preview-feedback {
+            display: flex;
+            gap: 5px;
+        }
+
+        .hint {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+
+        .disabled-section {
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">← Back to Menu</a>
+
+    <div class="container">
+        <header>
+            <h1>🔧 Level Editor</h1>
+            <p>Design your own Mastermind puzzle</p>
+        </header>
+
+        <div class="editor-wrap">
+            <div class="info-panel">
+                <h3>Level Details</h3>
+                <div class="form-group">
+                    <label for="levelName">Level Name</label>
+                    <input type="text" id="levelName" placeholder="My Mastermind Level" value="My Mastermind Level">
+                </div>
+                <div class="form-group">
+                    <label for="difficulty">Difficulty</label>
+                    <select id="difficulty">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="winMessage">Custom Win Message</label>
+                    <textarea id="winMessage" rows="2" placeholder="Shown when the player cracks the code">You cracked the code!</textarea>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <h3>Game Rules</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="codeLength">Code Length (2-8)</label>
+                        <input type="number" id="codeLength" min="2" max="8" value="4">
+                    </div>
+                    <div class="form-group">
+                        <label for="maxGuesses">Max Guesses (4-15)</label>
+                        <input type="number" id="maxGuesses" min="4" max="15" value="10">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="colorCount">Number of Colours (2-10)</label>
+                    <input type="number" id="colorCount" min="2" max="10" value="6">
+                </div>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="allowDuplicates" checked>
+                    <label for="allowDuplicates">Allow duplicate colours in the code</label>
+                </div>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="colorHints">
+                    <label for="colorHints">Show number labels on pegs (colour-blind friendly)</label>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <h3>Appearance</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pipShape">Peg Shape</label>
+                        <select id="pipShape"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="feedbackShape">Feedback Pip Shape</label>
+                        <select id="feedbackShape"></select>
+                    </div>
+                </div>
+                <div class="shape-preview" id="shapePreview"></div>
+                <h3 style="margin-top: 20px;">Colour Palette</h3>
+                <p class="hint">Click a swatch to customise each colour.</p>
+                <div class="color-grid" id="colorGrid"></div>
+            </div>
+
+            <div class="info-panel">
+                <h3>Solution</h3>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="randomSolution">
+                    <label for="randomSolution">Random solution each game</label>
+                </div>
+                <p class="hint">Uncheck to set a fixed secret code. Click a colour to add it, click a peg to remove it.</p>
+                <div id="solutionSection">
+                    <div class="palette" id="solutionPalette"></div>
+                    <div class="solution-row" id="solutionRow"></div>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <h3>Save &amp; Share</h3>
+                <div id="validationMsg"></div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="testBtn">▶️ Test Level</button>
+                    <button class="btn btn-secondary" id="saveBtn">💾 Save Level</button>
+                    <button class="btn btn-secondary" id="exportBtn">📥 Export JSON</button>
+                    <button class="btn btn-secondary" id="shareBtn">🔗 Copy Share Link</button>
+                    <label class="btn btn-secondary" style="text-align: center; cursor: pointer;">
+                        📤 Import JSON
+                        <input type="file" id="importInput" accept=".json" style="display: none;">
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Storage } from './js/core/storage.js';
+        import { PIP_SHAPES, DEFAULT_COLORS, buildPeg } from './js/core/shapes.js';
+
+        // Editor state.
+        let codeLength = 4;
+        let maxGuesses = 10;
+        let colorCount = 6;
+        let allowDuplicates = true;
+        let colorHints = false;
+        let pipShape = 'circle';
+        let feedbackShape = 'circle';
+        let colors = DEFAULT_COLORS.slice(0, colorCount);
+        let randomSolution = false;
+        let secret = new Array(codeLength).fill(null);
+        let editingLevelId = null;
+
+        const $ = id => document.getElementById(id);
+
+        // Populate shape selects.
+        for (const [id, def] of Object.entries(PIP_SHAPES)) {
+            $('pipShape').appendChild(new Option(def.name, id));
+            $('feedbackShape').appendChild(new Option(def.name, id));
+        }
+
+        // --- Structural updates ---
+        function setColorCount(n) {
+            const old = colors;
+            colors = [];
+            for (let i = 0; i < n; i++) {
+                colors.push(old[i] || DEFAULT_COLORS[i % DEFAULT_COLORS.length]);
+            }
+            colorCount = n;
+            secret = secret.map(c => (c !== null && c >= n) ? null : c);
+        }
+
+        function setCodeLength(n) {
+            const old = secret;
+            secret = [];
+            for (let i = 0; i < n; i++) secret.push(old[i] !== undefined ? old[i] : null);
+            codeLength = n;
+        }
+
+        // --- Rendering ---
+        function refreshAll() {
+            renderColorGrid();
+            renderShapePreview();
+            renderSolution();
+            validate();
+        }
+
+        function renderColorGrid() {
+            const grid = $('colorGrid');
+            grid.innerHTML = '';
+            colors.forEach((hex, i) => {
+                const cell = document.createElement('div');
+                cell.className = 'color-cell';
+                const input = document.createElement('input');
+                input.type = 'color';
+                input.value = hex;
+                input.addEventListener('input', () => {
+                    colors[i] = input.value;
+                    renderShapePreview();
+                    renderSolution();
+                });
+                const label = document.createElement('span');
+                label.textContent = 'Colour ' + (i + 1);
+                cell.appendChild(input);
+                cell.appendChild(label);
+                grid.appendChild(cell);
+            });
+        }
+
+        function renderShapePreview() {
+            const wrap = $('shapePreview');
+            wrap.innerHTML = '';
+            wrap.appendChild(buildPeg({ colorHex: colors[0], shapeId: pipShape, size: 44 }));
+            const arrow = document.createElement('span');
+            arrow.textContent = '→ feedback';
+            arrow.style.color = 'var(--text-secondary)';
+            wrap.appendChild(arrow);
+            const fb = document.createElement('div');
+            fb.className = 'preview-feedback';
+            ['#4ade80', '#facc15', null].forEach(c => {
+                fb.appendChild(buildPeg({
+                    colorHex: c || '#000',
+                    shapeId: feedbackShape,
+                    size: 18,
+                    state: c ? 'filled' : 'empty',
+                }));
+            });
+            wrap.appendChild(fb);
+        }
+
+        function renderSolution() {
+            const section = $('solutionSection');
+            section.classList.toggle('disabled-section', randomSolution);
+
+            const palette = $('solutionPalette');
+            palette.innerHTML = '';
+            colors.forEach((hex, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'peg-btn';
+                btn.appendChild(buildPeg({
+                    colorHex: hex,
+                    shapeId: pipShape,
+                    size: 42,
+                    label: colorHints ? String(i + 1) : '',
+                }));
+                btn.addEventListener('click', () => {
+                    const slot = secret.indexOf(null);
+                    if (slot !== -1) {
+                        secret[slot] = i;
+                        renderSolution();
+                        validate();
+                    }
+                });
+                palette.appendChild(btn);
+            });
+
+            const row = $('solutionRow');
+            row.innerHTML = '';
+            secret.forEach((ci, slot) => {
+                const peg = buildPeg({
+                    colorHex: ci !== null ? colors[ci] : '#000',
+                    shapeId: pipShape,
+                    size: 46,
+                    label: (colorHints && ci !== null) ? String(ci + 1) : '',
+                    state: ci !== null ? 'filled' : 'empty',
+                });
+                peg.addEventListener('click', () => {
+                    secret[slot] = null;
+                    renderSolution();
+                    validate();
+                });
+                row.appendChild(peg);
+            });
+        }
+
+        // --- Validation ---
+        function validate() {
+            const msg = $('validationMsg');
+            const errors = [];
+
+            if (codeLength < 2 || codeLength > 8) errors.push('Code length must be 2-8');
+            if (maxGuesses < 4 || maxGuesses > 15) errors.push('Max guesses must be 4-15');
+            if (colorCount < 2 || colorCount > 10) errors.push('Colours must be 2-10');
+            if (!allowDuplicates && codeLength > colorCount) {
+                errors.push('Need at least as many colours as pegs when duplicates are off');
+            }
+            if (!randomSolution) {
+                if (secret.some(c => c === null)) {
+                    errors.push('Fill every peg of the fixed solution (or enable random)');
+                } else if (!allowDuplicates && new Set(secret).size !== secret.length) {
+                    errors.push('Fixed solution has duplicates but duplicates are disabled');
+                }
+            }
+
+            if (errors.length) {
+                msg.className = 'validation-message validation-error';
+                msg.innerHTML = errors.map(e => '❌ ' + e).join('<br>');
+                return false;
+            }
+            msg.className = 'validation-message validation-success';
+            msg.textContent = '✓ Level is valid and ready!';
+            return true;
+        }
+
+        function getLevelData() {
+            return {
+                id: editingLevelId || `custom-${Date.now()}`,
+                name: $('levelName').value.trim() || 'Untitled Level',
+                difficulty: $('difficulty').value,
+                config: {
+                    codeLength,
+                    maxGuesses,
+                    colors: colors.slice(),
+                    allowDuplicates,
+                    pipShape,
+                    feedbackShape,
+                    colorHints,
+                },
+                secret: randomSolution ? null : secret.slice(),
+                winMessage: $('winMessage').value.trim() || 'You cracked the code!',
+            };
+        }
+
+        // --- Input wiring ---
+        $('codeLength').addEventListener('change', (e) => {
+            let n = parseInt(e.target.value) || 4;
+            n = Math.max(2, Math.min(8, n));
+            e.target.value = n;
+            setCodeLength(n);
+            refreshAll();
+        });
+
+        $('maxGuesses').addEventListener('change', (e) => {
+            let n = parseInt(e.target.value) || 10;
+            n = Math.max(4, Math.min(15, n));
+            e.target.value = n;
+            maxGuesses = n;
+            validate();
+        });
+
+        $('colorCount').addEventListener('change', (e) => {
+            let n = parseInt(e.target.value) || 6;
+            n = Math.max(2, Math.min(10, n));
+            e.target.value = n;
+            setColorCount(n);
+            refreshAll();
+        });
+
+        $('allowDuplicates').addEventListener('change', (e) => {
+            allowDuplicates = e.target.checked;
+            validate();
+        });
+
+        $('colorHints').addEventListener('change', (e) => {
+            colorHints = e.target.checked;
+            renderSolution();
+        });
+
+        $('pipShape').addEventListener('change', (e) => {
+            pipShape = e.target.value;
+            renderShapePreview();
+            renderSolution();
+        });
+
+        $('feedbackShape').addEventListener('change', (e) => {
+            feedbackShape = e.target.value;
+            renderShapePreview();
+        });
+
+        $('randomSolution').addEventListener('change', (e) => {
+            randomSolution = e.target.checked;
+            renderSolution();
+            validate();
+        });
+
+        // --- Actions ---
+        $('testBtn').addEventListener('click', () => {
+            if (!validate()) {
+                alert('Please fix the validation errors before testing.');
+                return;
+            }
+            Storage.setTestLevel(getLevelData());
+            window.open('game.html', '_blank');
+        });
+
+        $('saveBtn').addEventListener('click', () => {
+            if (!validate()) {
+                alert('Please fix the validation errors before saving.');
+                return;
+            }
+            const level = getLevelData();
+            Storage.saveLevel(level);
+            editingLevelId = level.id;
+            alert(`Level "${level.name}" saved!`);
+        });
+
+        $('exportBtn').addEventListener('click', () => {
+            if (!validate()) {
+                alert('Please fix the validation errors before exporting.');
+                return;
+            }
+            Storage.exportLevel(getLevelData());
+        });
+
+        $('shareBtn').addEventListener('click', () => {
+            if (!validate()) {
+                alert('Please fix the validation errors before sharing.');
+                return;
+            }
+            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(getLevelData()))));
+            const base = window.location.origin + window.location.pathname.replace('editor.html', 'game.html');
+            const url = `${base}?level=${encoded}`;
+            navigator.clipboard.writeText(url).then(
+                () => alert('Share link copied to clipboard!'),
+                () => prompt('Copy this share link:', url)
+            );
+        });
+
+        $('importInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                loadLevel(await Storage.importLevel(file));
+                alert('Level imported!');
+            } catch (err) {
+                alert('Failed to import: ' + err.message);
+            }
+            e.target.value = '';
+        });
+
+        function loadLevel(level) {
+            editingLevelId = level.id || null;
+            const cfg = level.config || {};
+            $('levelName').value = level.name || 'Imported Level';
+            $('difficulty').value = level.difficulty || 'easy';
+            $('winMessage').value = level.winMessage || 'You cracked the code!';
+
+            codeLength = Math.max(2, Math.min(8, cfg.codeLength || 4));
+            maxGuesses = Math.max(4, Math.min(15, cfg.maxGuesses || 10));
+            colors = (cfg.colors && cfg.colors.length) ? cfg.colors.slice() : DEFAULT_COLORS.slice(0, 6);
+            colorCount = Math.max(2, Math.min(10, colors.length));
+            colors = colors.slice(0, colorCount);
+            allowDuplicates = cfg.allowDuplicates !== false;
+            colorHints = !!cfg.colorHints;
+            pipShape = PIP_SHAPES[cfg.pipShape] ? cfg.pipShape : 'circle';
+            feedbackShape = PIP_SHAPES[cfg.feedbackShape] ? cfg.feedbackShape : 'circle';
+
+            if (Array.isArray(level.secret)) {
+                randomSolution = false;
+                secret = [];
+                for (let i = 0; i < codeLength; i++) {
+                    const v = level.secret[i];
+                    secret.push((Number.isInteger(v) && v >= 0 && v < colorCount) ? v : null);
+                }
+            } else {
+                randomSolution = true;
+                secret = new Array(codeLength).fill(null);
+            }
+
+            $('codeLength').value = codeLength;
+            $('maxGuesses').value = maxGuesses;
+            $('colorCount').value = colorCount;
+            $('allowDuplicates').checked = allowDuplicates;
+            $('colorHints').checked = colorHints;
+            $('pipShape').value = pipShape;
+            $('feedbackShape').value = feedbackShape;
+            $('randomSolution').checked = randomSolution;
+            refreshAll();
+        }
+
+        // --- Init ---
+        const editId = new URLSearchParams(window.location.search).get('edit');
+        if (editId) {
+            const level = Storage.getLevel(editId);
+            if (level) {
+                loadLevel(level);
+            } else {
+                refreshAll();
+            }
+        } else {
+            refreshAll();
+        }
+    </script>
+</body>
+</html>

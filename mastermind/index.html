@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Mastermind - Crack the Code!</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .menu-container {
+            max-width: 760px;
+            text-align: center;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .menu-btn {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.3em;
+        }
+
+        .feature-list {
+            text-align: left;
+            margin: 36px auto;
+            max-width: 520px;
+            list-style: none;
+        }
+
+        .feature-list li {
+            color: var(--text-secondary);
+            margin: 12px 0;
+            font-size: 1.05em;
+            padding-left: 28px;
+            position: relative;
+        }
+
+        .feature-list li::before {
+            content: "\25C8";
+            position: absolute;
+            left: 0;
+            color: var(--primary-color);
+        }
+
+        .preview-row {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <a href="../" class="back-link">← All Games</a>
+
+    <div class="container menu-container">
+        <header>
+            <h1>🧠 Mastermind</h1>
+            <p>Crack the hidden colour code using logic and deduction!</p>
+        </header>
+
+        <div class="preview-row" id="previewRow"></div>
+
+        <div class="menu-buttons">
+            <a href="game.html" class="btn btn-primary menu-btn">🎮 Play Game</a>
+            <a href="editor.html" class="btn btn-secondary menu-btn">🔧 Level Editor</a>
+            <a href="game.html?mode=custom" class="btn btn-secondary menu-btn">📁 Custom Levels</a>
+        </div>
+
+        <ul class="feature-list">
+            <li>6 built-in levels from beginner to grandmaster</li>
+            <li>Fully customisable: code length, colours, guesses & more</li>
+            <li>Choose the shape of your pips — circles, stars, hearts…</li>
+            <li>Write your own custom win message</li>
+            <li>Level editor with set or random solutions</li>
+            <li>Export, import and share levels with a link</li>
+        </ul>
+    </div>
+
+    <script type="module">
+        import { buildPeg, PIP_SHAPES, DEFAULT_COLORS } from './js/core/shapes.js';
+
+        const shapes = ['circle', 'star', 'heart', 'diamond', 'hexagon'];
+        const row = document.getElementById('previewRow');
+        shapes.forEach((shapeId, i) => {
+            row.appendChild(buildPeg({
+                colorHex: DEFAULT_COLORS[i + 1],
+                shapeId,
+                size: 54,
+            }));
+        });
+    </script>
+</body>
+</html>

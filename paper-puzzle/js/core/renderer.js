@@ -259,7 +259,10 @@ export class PaperPuzzleRenderer {
   // ── Completion overlay ──────────────────────────────────────────────────────
 
   _drawCompletion() {
-    const { ctx, canvas } = this;
+    const { ctx, canvas, engine } = this;
+    const title = engine.level.winTitle || 'Puzzle Complete!';
+    const msg   = engine.level.winMsg   || 'All pieces in place!';
+
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.48)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -273,12 +276,12 @@ export class PaperPuzzleRenderer {
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 12;
     ctx.fillStyle = '#FFD700';
-    ctx.fillText('Puzzle Complete!', cx, cy - 28);
+    ctx.fillText(title, cx, cy - 28);
 
     ctx.font = '26px "Segoe UI", sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.shadowBlur = 6;
-    ctx.fillText('All pieces in place!', cx, cy + 24);
+    ctx.fillText(msg, cx, cy + 24);
     ctx.restore();
   }
 

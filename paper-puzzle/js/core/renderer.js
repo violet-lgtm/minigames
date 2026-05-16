@@ -270,19 +270,58 @@ export class PaperPuzzleRenderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
+    const maxW = canvas.width * 0.82;
 
     ctx.font = 'bold 52px "Segoe UI", sans-serif';
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 12;
     ctx.fillStyle = '#FFD700';
-    ctx.fillText(title, cx, cy - 28);
+    const titleLines = this._wrapText(ctx, title, maxW);
 
+    ctx.font = '26px "Segoe UI", sans-serif';
+    const msgLines = this._wrapText(ctx, msg, maxW);
+
+    const titleLineH = 58;
+    const msgLineH   = 32;
+    const gap        = 16;
+    const totalH = titleLines.length * titleLineH + gap + msgLines.length * msgLineH;
+    let y = canvas.height / 2 - totalH / 2;
+
+    ctx.font = 'bold 52px "Segoe UI", sans-serif';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#FFD700';
+    for (const line of titleLines) {
+      ctx.fillText(line, cx, y + titleLineH / 2);
+      y += titleLineH;
+    }
+
+    y += gap;
     ctx.font = '26px "Segoe UI", sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.shadowBlur = 6;
-    ctx.fillText(msg, cx, cy + 24);
+    for (const line of msgLines) {
+      ctx.fillText(line, cx, y + msgLineH / 2);
+      y += msgLineH;
+    }
+
     ctx.restore();
+  }
+
+  _wrapText(ctx, text, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let current = '';
+    for (const word of words) {
+      const test = current ? current + ' ' + word : word;
+      if (ctx.measureText(test).width > maxWidth && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
   }
 
   // ── Deterministic RNG for background ────────────────────────────────────────

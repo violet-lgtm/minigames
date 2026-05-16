@@ -212,6 +212,11 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label for="winMessage">Win Message (Optional)</label>
+                        <input type="text" id="winMessage" placeholder="🎉 Level Complete!" maxlength="100">
+                        <small style="color: #aaa; font-size: 0.85em;">Shown when player completes the level</small>
+                    </div>
+                    <div class="form-group">
                         <label for="gridWidth">Grid Width (3-12)</label>
                         <input type="number" id="gridWidth" min="3" max="12" value="6">
                     </div>
@@ -752,7 +757,8 @@
                     return tileData;
                 }),
                 rails: rails.map(r => ({ ...r })),
-                theme: themeManager.currentTheme
+                theme: themeManager.currentTheme,
+                winMessage: document.getElementById('winMessage').value || null
             };
         }
 
@@ -840,6 +846,7 @@
             editingLevelId = level.id;
             document.getElementById('levelName').value = level.name;
             document.getElementById('difficulty').value = level.difficulty || 'easy';
+            document.getElementById('winMessage').value = level.winMessage || '';
             document.getElementById('gridWidth').value = level.gridSize.width;
             document.getElementById('gridHeight').value = level.gridSize.height;
 

@@ -295,16 +295,6 @@
         let railIdCounter = 0;
         let railCreationStart = null; // For creating rails by click-drag
 
-        // Check if editing existing level
-        const urlParams = new URLSearchParams(window.location.search);
-        const editId = urlParams.get('edit');
-        if (editId) {
-            const level = Storage.getLevel(editId);
-            if (level) {
-                loadLevel(level);
-            }
-        }
-
         // Initialize theme manager
         const themeManager = new ThemeManager();
 
@@ -333,6 +323,16 @@
         });
 
         initializeEditor();
+
+        // Check if editing existing level (after theme manager is ready)
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get('edit');
+        if (editId) {
+            const level = Storage.getLevel(editId);
+            if (level) {
+                loadLevel(level);
+            }
+        }
 
         function initializeEditor() {
             const canvas = document.getElementById('editorCanvas');

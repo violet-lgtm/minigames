@@ -34,6 +34,18 @@ A classic codebreaking game where you deduce a hidden colour code from feedback 
 
 **Play:** [Mastermind](mastermind/index.html)
 
+### 🎰 Reaction Slots
+A reaction-time test disguised as a slot machine — stop each of three spinning reels the instant the lucky 7 crosses the payline.
+
+**Features:**
+- Three reels that each spin faster than the last
+- Millisecond-accurate timing with PERFECT / GREAT / GOOD / MISS ratings
+- Snap-to-symbol stop for a satisfying, tidy finish
+- Tracks your best score locally
+- Play with a tap, click, or the spacebar
+
+**Play:** [Reaction Slots](slot-reaction/index.html)
+
 ### Workflow Details
 
 The `.github/workflows/deploy-pages.yml` workflow:

@@ -39,7 +39,9 @@ A reaction-time test disguised as a slot machine — stop each of three spinning
 
 **Features:**
 - Three reels that each spin faster than the last
-- Millisecond-accurate timing with PERFECT / GREAT / GOOD / MISS ratings
+- Millisecond-accurate timing with PERFECT / GREAT / GOOD ratings
+- Land a symbol next to the goal for partial NEAR credit
+- Hit the goal on multiple reels for a ×2 / ×3 combo multiplier
 - Snap-to-symbol stop for a satisfying, tidy finish
 - Tracks your best score locally
 - Play with a tap, click, or the spacebar

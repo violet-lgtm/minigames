@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Reaction Slots - Stop the Reels!</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .menu-container {
+            max-width: 720px;
+            text-align: center;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .menu-btn {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.3em;
+        }
+
+        .feature-list {
+            text-align: left;
+            margin: 36px auto;
+            max-width: 520px;
+            list-style: none;
+        }
+
+        .feature-list li {
+            color: var(--text-secondary);
+            margin: 12px 0;
+            font-size: 1.05em;
+            padding-left: 28px;
+            position: relative;
+        }
+
+        .feature-list li::before {
+            content: "\25C8";
+            position: absolute;
+            left: 0;
+            color: var(--primary-color);
+        }
+
+        .preview-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin: 26px 0;
+        }
+
+        .preview-reel {
+            width: 78px;
+            height: 78px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.6em;
+            background: linear-gradient(180deg, #fff 0%, #e9e9ef 100%);
+            border: 3px solid var(--primary-color);
+            border-radius: 12px;
+            box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.25), 0 6px 16px rgba(0, 0, 0, 0.35);
+            animation: spinPeek 1.1s infinite ease-in-out;
+        }
+
+        .preview-reel:nth-child(2) { animation-delay: 0.18s; }
+        .preview-reel:nth-child(3) { animation-delay: 0.36s; }
+
+        @keyframes spinPeek {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+    </style>
+</head>
+<body>
+    <a href="../" class="back-link">← All Games</a>
+
+    <div class="container menu-container">
+        <header>
+            <h1>🎰 Reaction Slots</h1>
+            <p>Three reels are spinning. Stop each one the instant the lucky 7 hits the line!</p>
+        </header>
+
+        <div class="preview-row">
+            <div class="preview-reel">7️⃣</div>
+            <div class="preview-reel">🍒</div>
+            <div class="preview-reel">💎</div>
+        </div>
+
+        <div class="menu-buttons">
+            <a href="game.html" class="btn btn-primary menu-btn">🎮 Play Game</a>
+        </div>
+
+        <ul class="feature-list">
+            <li>A pure reaction-time test disguised as a slot machine</li>
+            <li>Stop all 3 spinning reels on the glowing target symbol</li>
+            <li>Each reel spins faster than the last</li>
+            <li>Millisecond-accurate timing and PERFECT / GREAT / GOOD ratings</li>
+            <li>Tracks your best score &amp; fastest reaction locally</li>
+            <li>Play with a tap, click, or the spacebar</li>
+        </ul>
+    </div>
+</body>
+</html>

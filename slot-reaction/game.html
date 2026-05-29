@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Reaction Slots</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .container {
+            max-width: 720px;
+            text-align: center;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-around;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .topbar .stat-value { font-size: 1.5em; }
+        .topbar .stat-label { font-size: 0.8em; }
+
+        /* The slot machine cabinet */
+        .machine {
+            background: linear-gradient(160deg, #ffd24a 0%, #f5a623 40%, #c47a10 100%);
+            border-radius: 22px;
+            padding: 22px 22px 26px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 0 0 4px rgba(255, 255, 255, 0.25);
+            position: relative;
+        }
+
+        .reels {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            background: #1a0810;
+            border-radius: 14px;
+            padding: 16px 16px;
+            box-shadow: inset 0 4px 18px rgba(0, 0, 0, 0.7);
+        }
+
+        .reel {
+            position: relative;
+            width: 110px;
+            height: 270px; /* 3 cells of 90px */
+            overflow: hidden;
+            background: linear-gradient(180deg, #ffffff 0%, #e7e7ee 100%);
+            border-radius: 10px;
+            box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.35);
+            transition: outline-color 0.15s;
+            outline: 3px solid transparent;
+            outline-offset: 3px;
+        }
+
+        .reel.active {
+            outline-color: var(--secondary-gradient-start);
+            box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.35), 0 0 22px rgba(232, 58, 95, 0.7);
+        }
+
+        .reel.locked {
+            outline-color: var(--good-color);
+        }
+
+        /* Top & bottom fade so it reads like a window */
+        .reel::before,
+        .reel::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 70px;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .reel::before {
+            top: 0;
+            background: linear-gradient(180deg, rgba(231, 231, 238, 0.95), transparent);
+        }
+
+        .reel::after {
+            bottom: 0;
+            background: linear-gradient(0deg, rgba(231, 231, 238, 0.95), transparent);
+        }
+
+        .strip {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            will-change: transform;
+        }
+
+        .cell {
+            height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            line-height: 1;
+        }
+
+        .cell.target span {
+            filter: drop-shadow(0 0 6px rgba(245, 166, 35, 0.9));
+        }
+
+        /* Center payline window */
+        .payline {
+            position: absolute;
+            left: -6px;
+            right: -6px;
+            top: 90px;
+            height: 90px;
+            z-index: 4;
+            pointer-events: none;
+            border-top: 3px solid var(--secondary-gradient-start);
+            border-bottom: 3px solid var(--secondary-gradient-start);
+            box-shadow: 0 0 14px rgba(232, 58, 95, 0.5);
+        }
+
+        .payline .arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--secondary-gradient-start);
+            font-size: 1.4em;
+            text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+        }
+
+        .payline .arrow.left { left: -2px; }
+        .payline .arrow.right { right: -2px; }
+
+        /* Per-reel result tag */
+        .reel-result {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(0.6);
+            z-index: 6;
+            font-weight: bold;
+            font-size: 1.15em;
+            padding: 6px 12px;
+            border-radius: 8px;
+            color: #1a0810;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+            white-space: nowrap;
+        }
+
+        .reel-result.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .machine-foot {
+            margin-top: 16px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .stop-btn {
+            font-size: 1.6em;
+            padding: 20px 60px;
+            border-radius: 14px;
+            letter-spacing: 1px;
+        }
+
+        .target-banner {
+            margin: 14px 0 4px;
+            color: var(--text-secondary);
+            font-size: 1.05em;
+        }
+
+        .target-banner .sym {
+            font-size: 1.3em;
+            vertical-align: middle;
+            filter: drop-shadow(0 0 5px rgba(245, 166, 35, 0.9));
+        }
+
+        .hint {
+            margin-top: 10px;
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            opacity: 0.8;
+        }
+
+        /* Results modal breakdown */
+        .breakdown {
+            list-style: none;
+            margin: 16px 0;
+            text-align: left;
+        }
+
+        .breakdown li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 4px;
+            border-bottom: 1px solid var(--panel-border);
+            font-size: 1.05em;
+        }
+
+        .breakdown .tag {
+            font-weight: bold;
+            padding: 3px 10px;
+            border-radius: 6px;
+            color: #1a0810;
+        }
+
+        .tag-perfect { background: var(--good-color); }
+        .tag-great { background: #86efac; }
+        .tag-good { background: var(--ok-color); }
+        .tag-miss { background: var(--miss-color); }
+
+        .final-score {
+            font-size: 2.6em;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            .reel { width: 92px; height: 234px; }
+            .cell { height: 78px; font-size: 2.5em; }
+            .reel::before, .reel::after { height: 60px; }
+            .payline { top: 78px; height: 78px; }
+            .stop-btn { padding: 18px 40px; font-size: 1.4em; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <a href="../" class="back-link">← All Games</a>
+
+    <div class="container">
+        <header>
+            <h1>🎰 Reaction Slots</h1>
+        </header>
+
+        <div class="topbar info-panel">
+            <div class="stat">
+                <div class="stat-label">Reel</div>
+                <div class="stat-value" id="reelProgress">0 / 3</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Score</div>
+                <div class="stat-value" id="scoreVal">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Best</div>
+                <div class="stat-value" id="bestVal">–</div>
+            </div>
+        </div>
+
+        <div class="target-banner">
+            Stop each reel on <span class="sym" id="targetSym">7️⃣</span> as it crosses the line
+        </div>
+
+        <div class="machine">
+            <div class="reels" id="reels"></div>
+            <div class="machine-foot">
+                <button class="btn btn-secondary stop-btn" id="stopBtn">START</button>
+            </div>
+        </div>
+
+        <div class="hint">Tip: tap STOP, click, or press <strong>Space</strong> to lock the active reel.</div>
+    </div>
+
+    <!-- Results modal -->
+    <div class="modal" id="resultModal">
+        <div class="modal-content">
+            <div class="win-message" id="resultTitle">Round Complete!</div>
+            <div class="final-score"><span id="finalScore">0</span><span style="font-size:0.45em;color:var(--text-secondary)"> / 300</span></div>
+            <ul class="breakdown" id="breakdown"></ul>
+            <div id="newBest" style="color:var(--good-color);font-weight:bold;margin-bottom:10px;display:none">🏆 New best score!</div>
+            <button class="btn btn-primary" id="playAgainBtn">🔄 Play Again</button>
+            <a href="../" class="btn btn-secondary">🏠 Menu</a>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        'use strict';
+
+        // ---- Configuration ----
+        const SYMBOLS = ['7️⃣', '🍒', '🔔', '⭐', '🍋', '💎', '🍉'];
+        const TARGET_INDEX = 0;          // index of the symbol you must stop on
+        const TARGET_SYMBOL = SYMBOLS[TARGET_INDEX];
+        const NUM_REELS = 3;
+        const CYCLES = 3;                // how many full symbol sequences are stacked in the strip
+        const BEST_KEY = 'reactionSlots.best';
+
+        // Reading the live cell height keeps scoring honest across breakpoints.
+        let CELL = 90;
+
+        // Each reel spins faster than the last (px per millisecond).
+        const SPEEDS = [0.55, 0.78, 1.05];
+
+        // Absolute alignment error (px) -> rating thresholds. Scaled by CELL at runtime.
+        const RATINGS = [
+            { name: 'PERFECT', cls: 'tag-perfect', frac: 0.09, points: 100 },
+            { name: 'GREAT',   cls: 'tag-great',   frac: 0.24, points: 60  },
+            { name: 'GOOD',    cls: 'tag-good',    frac: 0.50, points: 30  },
+            { name: 'MISS',    cls: 'tag-miss',    frac: Infinity, points: 0 },
+        ];
+
+        // ---- State ----
+        const reels = [];          // { el, strip, resultEl, pos, speed, stopped, result }
+        let activeReel = 0;
+        let started = false;
+        let rafId = null;
+        let lastTs = 0;
+        let totalScore = 0;
+        let best = loadBest();
+
+        // ---- DOM ----
+        const reelsContainer = document.getElementById('reels');
+        const stopBtn = document.getElementById('stopBtn');
+        const scoreVal = document.getElementById('scoreVal');
+        const bestVal = document.getElementById('bestVal');
+        const reelProgress = document.getElementById('reelProgress');
+        const resultModal = document.getElementById('resultModal');
+        const finalScoreEl = document.getElementById('finalScore');
+        const breakdownEl = document.getElementById('breakdown');
+        const newBestEl = document.getElementById('newBest');
+        const resultTitle = document.getElementById('resultTitle');
+
+        document.getElementById('targetSym').textContent = TARGET_SYMBOL;
+        bestVal.textContent = best == null ? '–' : best;
+
+        function loadBest() {
+            try {
+                const v = parseInt(localStorage.getItem(BEST_KEY), 10);
+                return Number.isFinite(v) ? v : null;
+            } catch (e) { return null; }
+        }
+
+        function saveBest(v) {
+            try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) {}
+        }
+
+        // Build the reels and their repeating symbol strips.
+        function buildReels() {
+            reelsContainer.innerHTML = '';
+            reels.length = 0;
+            for (let r = 0; r < NUM_REELS; r++) {
+                const reel = document.createElement('div');
+                reel.className = 'reel';
+
+                const strip = document.createElement('div');
+                strip.className = 'strip';
+
+                // Stack CYCLES copies of the full sequence so it scrolls seamlessly.
+                for (let c = 0; c < CYCLES; c++) {
+                    for (let i = 0; i < SYMBOLS.length; i++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell' + (i === TARGET_INDEX ? ' target' : '');
+                        const span = document.createElement('span');
+                        span.textContent = SYMBOLS[i];
+                        cell.appendChild(span);
+                        strip.appendChild(cell);
+                    }
+                }
+                reel.appendChild(strip);
+
+                const payline = document.createElement('div');
+                payline.className = 'payline';
+                payline.innerHTML = '<span class="arrow left">▶</span><span class="arrow right">◀</span>';
+                reel.appendChild(payline);
+
+                const resultEl = document.createElement('div');
+                resultEl.className = 'reel-result';
+                reel.appendChild(resultEl);
+
+                reelsContainer.appendChild(reel);
+
+                reels.push({
+                    el: reel,
+                    strip,
+                    resultEl,
+                    // Start each reel at a different offset so they look independent.
+                    pos: Math.random() * SYMBOLS.length * CELL,
+                    speed: SPEEDS[r] || SPEEDS[SPEEDS.length - 1],
+                    stopped: false,
+                    result: null,
+                });
+            }
+            CELL = reels[0].el.querySelector('.cell').getBoundingClientRect().height || 90;
+            render();
+        }
+
+        // Render the current scroll position of every reel.
+        function render() {
+            const cycleH = SYMBOLS.length * CELL;
+            for (const reel of reels) {
+                const y = reel.pos % cycleH;
+                reel.strip.style.transform = `translateY(${-y}px)`;
+            }
+        }
+
+        // Smallest signed difference between two positions on a circular track.
+        function wrap(delta, cycle) {
+            let d = ((delta % cycle) + cycle) % cycle;
+            if (d > cycle / 2) d -= cycle;
+            return d;
+        }
+
+        // Distance (px) the target symbol sits from the center payline.
+        function targetOffset(reel) {
+            const cycleH = SYMBOLS.length * CELL;
+            // Strip-space position currently at the viewport center (payline is 1 cell down).
+            const center = reel.pos + 1.5 * CELL;
+            const targetCenter = TARGET_INDEX * CELL + 0.5 * CELL;
+            return wrap(center - targetCenter, cycleH);
+        }
+
+        function rate(offsetPx) {
+            const abs = Math.abs(offsetPx);
+            for (const r of RATINGS) {
+                if (abs <= r.frac * CELL) return r;
+            }
+            return RATINGS[RATINGS.length - 1];
+        }
+
+        function loop(ts) {
+            if (lastTs === 0) lastTs = ts;
+            let dt = ts - lastTs;
+            lastTs = ts;
+            if (dt > 60) dt = 60; // guard against tab-switch jumps
+
+            for (const reel of reels) {
+                if (!reel.stopped) reel.pos += reel.speed * dt;
+            }
+            render();
+            rafId = requestAnimationFrame(loop);
+        }
+
+        function startGame() {
+            started = true;
+            totalScore = 0;
+            activeReel = 0;
+            scoreVal.textContent = '0';
+            resultModal.classList.remove('active');
+            buildReels();
+            reels[0].el.classList.add('active');
+            updateProgress();
+            stopBtn.textContent = 'STOP';
+            lastTs = 0;
+            rafId = requestAnimationFrame(loop);
+        }
+
+        function updateProgress() {
+            const done = reels.filter(r => r.stopped).length;
+            reelProgress.textContent = `${done} / ${NUM_REELS}`;
+        }
+
+        function stopActiveReel() {
+            if (activeReel >= NUM_REELS) return;
+            const reel = reels[activeReel];
+            if (reel.stopped) return;
+
+            // Snap the reel so the nearest whole symbol sits on the payline (looks tidy),
+            // but score against where it *actually* stopped.
+            const offset = targetOffset(reel);
+            const ratingForScore = rate(offset);
+            const ms = Math.round(Math.abs(offset) / reel.speed);
+
+            // Align to nearest symbol cell for a clean resting position, then nudge
+            // pos by that small delta (always within half a cell, so pos stays positive).
+            const center = reel.pos + 1.5 * CELL;
+            const nearestIndex = Math.round((center - 0.5 * CELL) / CELL);
+            const snappedCenter = nearestIndex * CELL + 0.5 * CELL;
+            reel.pos += (snappedCenter - center);
+
+            reel.stopped = true;
+            reel.result = { rating: ratingForScore, offset, ms };
+            totalScore += ratingForScore.points;
+            scoreVal.textContent = totalScore;
+
+            reel.el.classList.remove('active');
+            reel.el.classList.add('locked');
+            showReelResult(reel, ratingForScore, ms);
+            render();
+            updateProgress();
+
+            activeReel++;
+            if (activeReel < NUM_REELS) {
+                reels[activeReel].el.classList.add('active');
+            } else {
+                finishRound();
+            }
+        }
+
+        function showReelResult(reel, rating, ms) {
+            const el = reel.resultEl;
+            el.textContent = rating.name === 'MISS' ? `MISS (${ms}ms)` : `${rating.name} · ${ms}ms`;
+            el.className = 'reel-result show ' + rating.cls;
+        }
+
+        function finishRound() {
+            stopBtn.textContent = 'PLAY AGAIN';
+            cancelAnimationFrame(rafId);
+            rafId = null;
+            started = false;
+
+            // Build the breakdown.
+            breakdownEl.innerHTML = '';
+            let bestMs = Infinity;
+            reels.forEach((reel, i) => {
+                const { rating, ms } = reel.result;
+                if (rating.points > 0) bestMs = Math.min(bestMs, ms);
+                const li = document.createElement('li');
+                li.innerHTML =
+                    `<span>Reel ${i + 1} <span style="opacity:.6">(${ms}ms off)</span></span>` +
+                    `<span class="tag ${rating.cls}">${rating.name}</span>`;
+                breakdownEl.appendChild(li);
+            });
+
+            finalScoreEl.textContent = totalScore;
+
+            let isBest = false;
+            if (best == null || totalScore > best) {
+                best = totalScore;
+                saveBest(best);
+                bestVal.textContent = best;
+                isBest = totalScore > 0;
+            }
+            newBestEl.style.display = isBest ? 'block' : 'none';
+
+            if (totalScore === 300) resultTitle.textContent = '🎉 JACKPOT! Flawless!';
+            else if (totalScore >= 180) resultTitle.textContent = '🔥 Sharp reflexes!';
+            else if (totalScore >= 90) resultTitle.textContent = 'Round Complete!';
+            else resultTitle.textContent = 'Keep practising!';
+
+            setTimeout(() => resultModal.classList.add('active'), 650);
+        }
+
+        // ---- Input ----
+        function handleAction() {
+            if (!started) { startGame(); return; }
+            stopActiveReel();
+        }
+
+        stopBtn.addEventListener('click', handleAction);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.key === ' ') {
+                e.preventDefault();
+                handleAction();
+            }
+        });
+
+        document.getElementById('playAgainBtn').addEventListener('click', startGame);
+
+        // Recompute CELL on resize so scoring matches what is on screen.
+        window.addEventListener('resize', () => {
+            if (reels.length) {
+                const c = reels[0].el.querySelector('.cell');
+                if (c) CELL = c.getBoundingClientRect().height || CELL;
+            }
+        });
+
+        // Show idle reels behind the START button.
+        buildReels();
+    })();
+    </script>
+</body>
+</html>

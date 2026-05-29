@@ -1,0 +1,230 @@
+/* Reaction Slots - Common Styles */
+
+:root {
+    --bg-gradient-start: #2a0a14;
+    --bg-gradient-end: #14060f;
+    --primary-color: #ffd24a;
+    --primary-gradient-start: #ffe27a;
+    --primary-gradient-end: #f5a623;
+    --secondary-gradient-start: #e83a5f;
+    --secondary-gradient-end: #a01030;
+    --accent-color: #ffd24a;
+    --text-primary: #fff;
+    --text-secondary: #d9a9b3;
+    --panel-bg: rgba(255, 255, 255, 0.05);
+    --panel-border: rgba(255, 210, 74, 0.25);
+    --good-color: #4ade80;
+    --ok-color: #facc15;
+    --miss-color: #f87171;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(255, 210, 74, 0.12), transparent 60%),
+        linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+    background-attachment: fixed;
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.container {
+    max-width: 900px;
+    width: 100%;
+    padding: 20px;
+    padding-top: 70px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+h1 {
+    font-size: 3em;
+    margin-bottom: 10px;
+    background: linear-gradient(45deg, var(--primary-gradient-start), var(--primary-gradient-end));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 2px 12px rgba(245, 166, 35, 0.3);
+}
+
+h2 {
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    color: var(--primary-color);
+}
+
+p {
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    font-size: 1.1em;
+}
+
+/* Buttons */
+.btn {
+    background: linear-gradient(135deg, var(--secondary-gradient-start) 0%, var(--secondary-gradient-end) 100%);
+    color: var(--text-primary);
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.1em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-decoration: none;
+    display: inline-block;
+    margin: 5px;
+    font-family: inherit;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(232, 58, 95, 0.4);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
+    color: #2a0a14;
+    font-weight: bold;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, var(--secondary-gradient-start) 0%, var(--secondary-gradient-end) 100%);
+}
+
+/* Info panels */
+.info-panel {
+    background: var(--panel-bg);
+    border: 2px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.stats {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 2em;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+    border: 3px solid var(--accent-color);
+    border-radius: 15px;
+    padding: 40px;
+    max-width: 500px;
+    text-align: center;
+    animation: modalFadeIn 0.3s;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.win-message {
+    font-size: 2em;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+}
+
+/* Back link */
+.back-link {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: transform 0.2s;
+    z-index: 100;
+}
+
+.back-link:hover {
+    transform: translateX(-5px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    h1 { font-size: 2.1em; }
+    h2 { font-size: 1.3em; }
+    .btn { padding: 12px 24px; font-size: 1em; }
+    .container { padding: 12px; padding-top: 60px; }
+    .modal-content { padding: 28px 20px; }
+}

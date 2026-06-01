@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Block Stacker</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/blocks.js"></script>
+    <style>
+        .container {
+            max-width: 560px;
+            text-align: center;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-around;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .topbar .stat-value { font-size: 1.6em; }
+        .topbar .stat-label { font-size: 0.8em; }
+
+        /* The playfield — a white card holding the canvas */
+        .field-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 18px;
+            padding: 10px;
+            box-shadow: 0 8px 26px rgba(0, 0, 0, 0.12);
+            margin: 0 auto;
+            position: relative;
+            line-height: 0;
+        }
+
+        #game {
+            width: 100%;
+            display: block;
+            border-radius: 12px;
+            background: linear-gradient(180deg, var(--field-top) 0%, var(--field-bottom) 100%);
+            touch-action: manipulation;
+            cursor: pointer;
+        }
+
+        /* Big floating feedback word (PERFECT! / GREAT! …) */
+        .flash {
+            position: absolute;
+            top: 18%;
+            left: 50%;
+            transform: translate(-50%, 0);
+            font-weight: 800;
+            font-size: 1.6em;
+            color: var(--accent-strong);
+            text-shadow: 0 2px 6px rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .flash.show {
+            animation: flashPop 0.7s ease-out;
+        }
+
+        @keyframes flashPop {
+            0% { opacity: 0; transform: translate(-50%, 10px) scale(0.7); }
+            25% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
+            100% { opacity: 0; transform: translate(-50%, -22px) scale(1); }
+        }
+
+        .hint {
+            color: var(--text-secondary);
+            font-size: 0.92em;
+            margin: 12px 0 0;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 14px;
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .combo-tag {
+            color: var(--good-color);
+            font-weight: 800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="topbar info-panel">
+            <div class="stat">
+                <div class="stat-label">HEIGHT</div>
+                <div class="stat-value" id="scoreVal">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">COMBO</div>
+                <div class="stat-value" id="comboVal">—</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">BEST</div>
+                <div class="stat-value" id="bestVal">0</div>
+            </div>
+        </div>
+
+        <div class="field-card">
+            <canvas id="game"></canvas>
+            <div class="flash" id="flash"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="dropBtn">⬇ Drop</button>
+            <button class="btn btn-secondary" id="restartBtn">↻ Restart</button>
+        </div>
+
+        <p class="hint">Tap the tower, press the Drop button, or hit <strong>Space</strong> to drop a block.</p>
+        <a href="index.html" class="back-link">← Back to menu</a>
+    </div>
+
+    <!-- Game over modal -->
+    <div class="modal" id="overModal">
+        <div class="modal-content">
+            <div class="win-message" id="overTitle">Tower Toppled!</div>
+            <p id="overText">You stacked 0 blocks.</p>
+            <div class="controls">
+                <button class="btn btn-primary" id="playAgainBtn">▶ Play Again</button>
+                <a href="index.html" class="btn btn-secondary">Menu</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        /* ---------------------------------------------------------------
+         * Setup & constants
+         * ------------------------------------------------------------- */
+        const SKIN_KEY = 'blockStack.skin';
+        const BEST_KEY = 'blockStack.best';
+
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        const scoreVal = document.getElementById('scoreVal');
+        const comboVal = document.getElementById('comboVal');
+        const bestVal = document.getElementById('bestVal');
+        const flash = document.getElementById('flash');
+        const overModal = document.getElementById('overModal');
+        const overTitle = document.getElementById('overTitle');
+        const overText = document.getElementById('overText');
+
+        // Logical playfield size (CSS pixels). The canvas backing store is
+        // scaled by devicePixelRatio for crisp rendering on HiDPI screens.
+        const VIEW_W = 360;
+        const VIEW_H = 540;
+
+        const BLOCK_H = 30;          // height of every block
+        const SPEED = 235;           // horizontal speed, px/sec — steady throughout
+        const PERFECT_TOL = 6;       // px tolerance for a "perfect" drop
+        const FIRST_W = 200;         // starting block width
+        const GROUND_Y = VIEW_H - 60; // y of the very bottom block's base line
+
+        const skinId = (function () {
+            const id = localStorage.getItem(SKIN_KEY);
+            return (id && window.BlockSkins.get(id) &&
+                    window.BlockSkins.get(id).id === id) ? id : window.BlockSkins.list()[0].id;
+        })();
+
+        let best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10);
+        bestVal.textContent = best;
+
+        /* ---------------------------------------------------------------
+         * HiDPI canvas sizing
+         * ------------------------------------------------------------- */
+        function sizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = VIEW_W * dpr;
+            canvas.height = VIEW_H * dpr;
+            canvas.style.height = (canvas.clientWidth * (VIEW_H / VIEW_W)) + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        /* ---------------------------------------------------------------
+         * Game state
+         * ------------------------------------------------------------- */
+        let stack;       // placed blocks: { x, w, index }
+        let mover;       // the currently sliding block: { x, w, dir }
+        let debris;      // falling sliced-off pieces
+        let camera;      // current vertical scroll (world units), eased
+        let cameraTarget;
+        let score;
+        let combo;
+        let state;       // 'playing' | 'over'
+        let lastT;
+
+        function reset() {
+            stack = [{ x: (VIEW_W - FIRST_W) / 2, w: FIRST_W, index: 0 }];
+            debris = [];
+            camera = 0;
+            cameraTarget = 0;
+            score = 0;
+            combo = 0;
+            state = 'playing';
+            spawnMover();
+            updateHud();
+            overModal.classList.remove('active');
+        }
+
+        // The base (bottom) y in WORLD space for the block at the given height
+        // level. World y grows downward like screen y; level 0 sits on the
+        // ground line and each level stacks BLOCK_H above the previous.
+        function baseYForLevel(level) {
+            return GROUND_Y - level * BLOCK_H;
+        }
+
+        function spawnMover() {
+            const top = stack[stack.length - 1];
+            const fromLeft = stack.length % 2 === 0;
+            mover = {
+                x: fromLeft ? 0 : VIEW_W - top.w,
+                w: top.w,
+                dir: fromLeft ? 1 : -1,
+            };
+        }
+
+        /* ---------------------------------------------------------------
+         * Dropping a block
+         * ------------------------------------------------------------- */
+        function drop() {
+            if (state !== 'playing') return;
+
+            const below = stack[stack.length - 1];
+            const moverRight = mover.x + mover.w;
+            const belowRight = below.x + below.w;
+
+            const overlapLeft = Math.max(mover.x, below.x);
+            const overlapRight = Math.min(moverRight, belowRight);
+            const overlap = overlapRight - overlapLeft;
+
+            if (overlap <= 0) {
+                // Total miss — the block tumbles away and the run ends.
+                addDebris(mover.x, mover.w, stack.length);
+                gameOver();
+                return;
+            }
+
+            const offset = mover.x - below.x;
+            const perfect = Math.abs(offset) <= PERFECT_TOL;
+
+            let newX, newW;
+            if (perfect) {
+                // Snap perfectly in line; keep full width and grow the combo.
+                newX = below.x;
+                newW = below.w;
+                combo++;
+                showFlash(combo >= 2 ? `PERFECT ×${combo}!` : 'PERFECT!', 'var(--good-color)');
+            } else {
+                combo = 0;
+                newX = overlapLeft;
+                newW = overlap;
+                // The sliced-off overhang falls away.
+                if (mover.x < below.x) {
+                    addDebris(mover.x, below.x - mover.x, stack.length);
+                } else {
+                    addDebris(belowRight, moverRight - belowRight, stack.length);
+                }
+                const ratio = overlap / mover.w;
+                if (ratio > 0.85) showFlash('GREAT!', 'var(--accent-strong)');
+                else if (ratio > 0.55) showFlash('GOOD', 'var(--ok-color)');
+            }
+
+            stack.push({ x: newX, w: newW, index: stack.length });
+            score++;
+            updateHud();
+            spawnMover();
+        }
+
+        function addDebris(x, w, level) {
+            if (w <= 0.5) return;
+            debris.push({
+                x: x,
+                w: w,
+                y: baseYForLevel(level) - BLOCK_H,
+                vy: -40,
+                vx: (Math.random() - 0.5) * 40,
+                rot: 0,
+                vrot: (Math.random() - 0.5) * 4,
+                index: level,
+                life: 1,
+            });
+        }
+
+        function gameOver() {
+            state = 'over';
+            combo = 0;
+            updateHud();
+            if (score > best) {
+                best = score;
+                localStorage.setItem(BEST_KEY, String(best));
+                bestVal.textContent = best;
+            }
+            overTitle.textContent = score >= best && score > 0 ? 'New Best! 🏆' : 'Tower Toppled!';
+            overText.innerHTML = 'You stacked <strong>' + score + '</strong> block' +
+                (score === 1 ? '' : 's') + '.';
+            // Brief delay so the final debris is visible before the modal.
+            setTimeout(() => overModal.classList.add('active'), 650);
+        }
+
+        /* ---------------------------------------------------------------
+         * HUD & feedback
+         * ------------------------------------------------------------- */
+        function updateHud() {
+            scoreVal.textContent = score;
+            comboVal.textContent = combo >= 2 ? '×' + combo : '—';
+            comboVal.style.color = combo >= 2 ? 'var(--good-color)' : 'var(--text-primary)';
+        }
+
+        let flashTimer = null;
+        function showFlash(text, color) {
+            flash.textContent = text;
+            flash.style.color = color || 'var(--accent-strong)';
+            flash.classList.remove('show');
+            // reflow to restart the animation
+            void flash.offsetWidth;
+            flash.classList.add('show');
+            clearTimeout(flashTimer);
+            flashTimer = setTimeout(() => flash.classList.remove('show'), 700);
+        }
+
+        /* ---------------------------------------------------------------
+         * Update & render loop
+         * ------------------------------------------------------------- */
+        function update(dt) {
+            if (state === 'playing') {
+                // Move the sliding block at a steady pace, bouncing off edges.
+                mover.x += mover.dir * SPEED * dt;
+                if (mover.x <= 0) { mover.x = 0; mover.dir = 1; }
+                const maxX = VIEW_W - mover.w;
+                if (mover.x >= maxX) { mover.x = maxX; mover.dir = -1; }
+            }
+
+            // Ease the camera so the top of the tower stays in the upper third.
+            const towerTop = baseYForLevel(stack.length - 1) - BLOCK_H;
+            const desiredTopScreen = VIEW_H * 0.42;
+            cameraTarget = Math.max(0, (desiredTopScreen) - towerTop);
+            camera += (cameraTarget - camera) * Math.min(1, dt * 6);
+
+            // Advance falling debris.
+            for (let i = debris.length - 1; i >= 0; i--) {
+                const d = debris[i];
+                d.vy += 520 * dt;          // gravity
+                d.y += d.vy * dt;
+                d.x += d.vx * dt;
+                d.rot += d.vrot * dt;
+                d.life -= dt * 0.8;
+                if (d.y - camera > VIEW_H + 80 || d.life <= 0) debris.splice(i, 1);
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+
+            // Placed blocks.
+            for (const b of stack) {
+                const y = baseYForLevel(b.index) - BLOCK_H + camera;
+                if (y > VIEW_H + 40) continue; // scrolled off the bottom — skip
+                window.BlockSkins.draw(ctx, { x: b.x, y: y, w: b.w, h: BLOCK_H }, b.index, skinId);
+            }
+
+            // Falling debris (slightly faded).
+            for (const d of debris) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, Math.min(1, d.life));
+                const cx = d.x + d.w / 2;
+                const cy = d.y + BLOCK_H / 2 + camera;
+                ctx.translate(cx, cy);
+                ctx.rotate(d.rot);
+                window.BlockSkins.draw(
+                    ctx,
+                    { x: -d.w / 2, y: -BLOCK_H / 2, w: d.w, h: BLOCK_H },
+                    d.index, skinId
+                );
+                ctx.restore();
+            }
+
+            // The sliding block on top.
+            if (state === 'playing') {
+                const y = baseYForLevel(stack.length) - BLOCK_H + camera;
+                window.BlockSkins.draw(ctx, { x: mover.x, y: y, w: mover.w, h: BLOCK_H },
+                    stack.length, skinId);
+
+                // A faint guide line showing where it will land.
+                const below = stack[stack.length - 1];
+                ctx.save();
+                ctx.strokeStyle = 'rgba(63, 108, 246, 0.25)';
+                ctx.setLineDash([4, 5]);
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(below.x, y + BLOCK_H);
+                ctx.lineTo(below.x, baseYForLevel(below.index) - BLOCK_H + camera);
+                ctx.moveTo(below.x + below.w, y + BLOCK_H);
+                ctx.lineTo(below.x + below.w, baseYForLevel(below.index) - BLOCK_H + camera);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        function frame(t) {
+            if (!lastT) lastT = t;
+            let dt = (t - lastT) / 1000;
+            lastT = t;
+            if (dt > 0.05) dt = 0.05; // clamp after tab switches
+            update(dt);
+            render();
+            requestAnimationFrame(frame);
+        }
+
+        /* ---------------------------------------------------------------
+         * Input
+         * ------------------------------------------------------------- */
+        function onTap(e) {
+            if (state === 'over') return;
+            e.preventDefault();
+            drop();
+        }
+
+        canvas.addEventListener('pointerdown', onTap);
+        document.getElementById('dropBtn').addEventListener('click', () => {
+            if (state === 'playing') drop();
+        });
+        document.getElementById('restartBtn').addEventListener('click', reset);
+        document.getElementById('playAgainBtn').addEventListener('click', reset);
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                e.preventDefault();
+                if (state === 'playing') drop();
+                else reset();
+            }
+        });
+
+        window.addEventListener('resize', sizeCanvas);
+
+        /* ---------------------------------------------------------------
+         * Go!
+         * ------------------------------------------------------------- */
+        sizeCanvas();
+        reset();
+        requestAnimationFrame(frame);
+    })();
+    </script>
+</body>
+</html>

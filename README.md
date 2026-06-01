@@ -49,6 +49,22 @@ A reaction-time test disguised as a slot machine — stop each of three spinning
 
 **Play:** [Reaction Slots](slot-reaction/index.html)
 
+### 🧱 Block Stacker
+A timing game where a block slides back and forth at a steady pace above your tower — drop it the instant it lines up to stack as high as you can.
+
+**Features:**
+- A block glides left/right at a steady, predictable pace; tap, click or press Space to drop it
+- Overhang is sliced off on every imperfect drop, so the next block is narrower
+- Land a perfect line-up to keep your full width and build a combo
+- The camera scrolls upward as your tower climbs
+- Sliced pieces tumble away with a little physics flourish
+- Swappable block styles (Spectrum, Sunset, Ocean, Slate, Candy) with a simple registry for adding your own
+- Tracks your best height locally
+
+**Play:** [Block Stacker](block-stack/index.html)
+
+**Customising block looks:** all rendering lives in `block-stack/js/blocks.js`. Register a new skin with `BlockSkins.register({ id, name, colorFor(index) })` for a recoloured block, or supply a `render(ctx, rect, index, helpers)` function for a fully custom look (patterns, emoji, images). New skins appear automatically in the menu's style picker.
+
 ### Workflow Details
 
 The `.github/workflows/deploy-pages.yml` workflow:

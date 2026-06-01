@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Block Stacker - Build the Tower!</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/blocks.js"></script>
+    <style>
+        .menu-container {
+            max-width: 560px;
+            text-align: center;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .menu-btn {
+            width: 100%;
+            padding: 20px;
+            font-size: 1.3em;
+        }
+
+        /* animated preview tower */
+        .preview-tower {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            gap: 4px;
+            margin: 24px 0;
+            min-height: 150px;
+            justify-content: flex-end;
+        }
+
+        .preview-block {
+            height: 26px;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+            animation: settle 0.5s ease-out backwards;
+        }
+
+        @keyframes settle {
+            from { transform: translateY(-40px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .feature-list {
+            text-align: left;
+            margin: 28px auto;
+            max-width: 520px;
+            list-style: none;
+        }
+
+        .feature-list li {
+            color: var(--text-secondary);
+            margin: 12px 0;
+            font-size: 1.05em;
+            padding-left: 28px;
+            position: relative;
+        }
+
+        .feature-list li::before {
+            content: "\25C8";
+            position: absolute;
+            left: 0;
+            color: var(--accent-strong);
+        }
+
+        /* skin picker */
+        .skin-section {
+            margin: 26px auto 6px;
+            max-width: 520px;
+        }
+
+        .skin-title {
+            font-weight: 700;
+            color: var(--text-secondary);
+            font-size: 0.95em;
+            margin-bottom: 12px;
+        }
+
+        .skin-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .skin-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 2px solid var(--surface-border);
+            background: var(--surface);
+            border-radius: 22px;
+            padding: 7px 14px 7px 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.92em;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: border-color 0.15s, transform 0.15s;
+        }
+
+        .skin-chip:hover { transform: translateY(-1px); }
+
+        .skin-chip.active {
+            border-color: var(--accent);
+            box-shadow: 0 4px 12px rgba(63, 108, 246, 0.25);
+        }
+
+        .skin-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 5px;
+            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="container menu-container">
+        <header>
+            <h1>🧱 Block Stacker</h1>
+            <p>A block slides back and forth at the top of the screen. Drop it the moment it lines up and build the tallest tower you can!</p>
+        </header>
+
+        <div class="preview-tower" id="previewTower"></div>
+
+        <div class="menu-buttons">
+            <a href="game.html" class="btn btn-primary menu-btn">🎮 Play Game</a>
+        </div>
+
+        <div class="skin-section">
+            <div class="skin-title">Block style</div>
+            <div class="skin-row" id="skinRow"></div>
+        </div>
+
+        <ul class="feature-list">
+            <li>Time your drop as the block glides across — steady, predictable pace</li>
+            <li>Overhang gets sliced off, so every miss makes the next block narrower</li>
+            <li>Nail a perfect line-up to keep your width and build a combo</li>
+            <li>The camera scrolls up as your tower climbs into the sky</li>
+            <li>Swappable block styles — and an easy hook to add your own</li>
+            <li>Tracks your best height locally; play with a tap, click or spacebar</li>
+        </ul>
+    </div>
+
+    <script>
+        (function () {
+            const SKIN_KEY = 'blockStack.skin';
+            const skins = window.BlockSkins.list();
+            let current = localStorage.getItem(SKIN_KEY);
+            if (!current || !window.BlockSkins.get(current) ||
+                window.BlockSkins.get(current).id !== current) {
+                current = skins[0].id;
+            }
+
+            /* ----- skin picker chips ----- */
+            const row = document.getElementById('skinRow');
+            function renderChips() {
+                row.innerHTML = '';
+                skins.forEach((skin) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'skin-chip' + (skin.id === current ? ' active' : '');
+                    btn.type = 'button';
+                    const dot = document.createElement('span');
+                    dot.className = 'skin-dot';
+                    dot.style.background = skin.swatch ||
+                        (skin.colorFor ? skin.colorFor(0) : '#888');
+                    const label = document.createElement('span');
+                    label.textContent = skin.name;
+                    btn.appendChild(dot);
+                    btn.appendChild(label);
+                    btn.addEventListener('click', () => {
+                        current = skin.id;
+                        localStorage.setItem(SKIN_KEY, current);
+                        renderChips();
+                        renderPreview();
+                    });
+                    row.appendChild(btn);
+                });
+            }
+
+            /* ----- animated preview tower using the chosen skin ----- */
+            const tower = document.getElementById('previewTower');
+            function renderPreview() {
+                const skin = window.BlockSkins.get(current);
+                tower.innerHTML = '';
+                const widths = [150, 138, 150, 126, 140, 118];
+                widths.forEach((w, i) => {
+                    const b = document.createElement('div');
+                    b.className = 'preview-block';
+                    b.style.width = w + 'px';
+                    b.style.background = skin.colorFor ? skin.colorFor(i) :
+                        (skin.swatch || '#888');
+                    b.style.animationDelay = (i * 0.08) + 's';
+                    tower.appendChild(b);
+                });
+            }
+
+            renderChips();
+            renderPreview();
+        })();
+    </script>
+</body>
+</html>

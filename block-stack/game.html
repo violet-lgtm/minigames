@@ -159,11 +159,16 @@
         const VIEW_W = 360;
         const VIEW_H = 540;
 
-        const BLOCK_H = 30;          // height of every block
-        const SPEED = 235;           // horizontal speed, px/sec — steady throughout
-        const PERFECT_TOL = 6;       // px tolerance for a "perfect" drop
-        const FIRST_W = 200;         // starting block width
-        const GROUND_Y = VIEW_H - 60; // y of the very bottom block's base line
+        const BLOCK_W = 72;          // every block is the same (squarish) size
+        const BLOCK_H = 60;
+        const BASE_SPEED = 120;      // slide speed of the first block, px/sec
+        const SPEED_STEP = 16;       // added to slide speed after every drop
+        const SPEED_MAX = 470;       // cap so it stays (barely) playable
+        const PERFECT_TOL = 5;       // px tolerance for a "perfect" line-up
+        const MOVER_TOP_Y = 22;      // screen-space y the slider rides along at the top
+        const FALL_GRAVITY = 1500;   // px/sec^2 while a dropped block falls
+        const FALL_V0 = 80;          // initial downward speed on release
+        const GROUND_Y = VIEW_H - 56; // y of the very bottom block's base line
 
         const skinId = (function () {
             const id = localStorage.getItem(SKIN_KEY);
@@ -188,9 +193,9 @@
         /* ---------------------------------------------------------------
          * Game state
          * ------------------------------------------------------------- */
-        let stack;       // placed blocks: { x, w, index }
-        let mover;       // the currently sliding block: { x, w, dir }
-        let debris;      // falling sliced-off pieces
+        let stack;       // placed blocks: { x, index }  (all BLOCK_W wide)
+        let mover;       // the active block: { x, dir, speed, phase, screenY, vy }
+        let debris;      // blocks that missed and tumble away
         let camera;      // current vertical scroll (world units), eased
         let cameraTarget;
         let score;
@@ -199,7 +204,7 @@
         let lastT;
 
         function reset() {
-            stack = [{ x: (VIEW_W - FIRST_W) / 2, w: FIRST_W, index: 0 }];
+            stack = [{ x: (VIEW_W - BLOCK_W) / 2, index: 0 }];
             debris = [];
             camera = 0;
             cameraTarget = 0;
@@ -218,97 +223,101 @@
             return GROUND_Y - level * BLOCK_H;
         }
 
+        // Slide speed grows with every block already placed.
+        function currentSpeed() {
+            return Math.min(SPEED_MAX, BASE_SPEED + score * SPEED_STEP);
+        }
+
         function spawnMover() {
-            const top = stack[stack.length - 1];
             const fromLeft = stack.length % 2 === 0;
             mover = {
-                x: fromLeft ? 0 : VIEW_W - top.w,
-                w: top.w,
+                x: fromLeft ? 0 : VIEW_W - BLOCK_W,
                 dir: fromLeft ? 1 : -1,
+                speed: currentSpeed(),
+                phase: 'slide',          // 'slide' at the top, then 'fall'
+                screenY: MOVER_TOP_Y,    // screen-space top of the block
+                vy: 0,
             };
         }
 
         /* ---------------------------------------------------------------
-         * Dropping a block
+         * Dropping: release the block so it falls from the top.
          * ------------------------------------------------------------- */
         function drop() {
-            if (state !== 'playing') return;
+            if (state !== 'playing' || !mover || mover.phase !== 'slide') return;
+            mover.phase = 'fall';
+            mover.vy = FALL_V0;
+        }
 
+        // Called once a falling block reaches the top of the stack.
+        function land() {
             const below = stack[stack.length - 1];
-            const moverRight = mover.x + mover.w;
-            const belowRight = below.x + below.w;
-
-            const overlapLeft = Math.max(mover.x, below.x);
-            const overlapRight = Math.min(moverRight, belowRight);
-            const overlap = overlapRight - overlapLeft;
+            const offset = mover.x - below.x;
+            const overlap = BLOCK_W - Math.abs(offset);
 
             if (overlap <= 0) {
-                // Total miss — the block tumbles away and the run ends.
-                addDebris(mover.x, mover.w, stack.length);
-                gameOver();
+                // Missed the tower entirely — let it keep falling and end the run.
+                missAndFall();
                 return;
             }
 
-            const offset = mover.x - below.x;
-            const perfect = Math.abs(offset) <= PERFECT_TOL;
-
-            let newX, newW;
-            if (perfect) {
-                // Snap perfectly in line; keep full width and grow the combo.
-                newX = below.x;
-                newW = below.w;
+            // Full block always stays — no slicing. A tight line-up is "perfect"
+            // and snaps flush, building a combo; otherwise it rests where it fell.
+            let x = mover.x;
+            if (Math.abs(offset) <= PERFECT_TOL) {
+                x = below.x;
                 combo++;
                 showFlash(combo >= 2 ? `PERFECT ×${combo}!` : 'PERFECT!', 'var(--good-color)');
             } else {
                 combo = 0;
-                newX = overlapLeft;
-                newW = overlap;
-                // The sliced-off overhang falls away.
-                if (mover.x < below.x) {
-                    addDebris(mover.x, below.x - mover.x, stack.length);
-                } else {
-                    addDebris(belowRight, moverRight - belowRight, stack.length);
-                }
-                const ratio = overlap / mover.w;
-                if (ratio > 0.85) showFlash('GREAT!', 'var(--accent-strong)');
-                else if (ratio > 0.55) showFlash('GOOD', 'var(--ok-color)');
+                const acc = overlap / BLOCK_W;
+                if (acc > 0.8) showFlash('GREAT!', 'var(--accent-strong)');
+                else if (acc > 0.5) showFlash('GOOD', 'var(--ok-color)');
             }
 
-            stack.push({ x: newX, w: newW, index: stack.length });
+            stack.push({ x: x, index: stack.length });
             score++;
             updateHud();
             spawnMover();
         }
 
-        function addDebris(x, w, level) {
-            if (w <= 0.5) return;
+        // The active block missed: hand it to the debris system so it tumbles
+        // past the tower, then end the game.
+        function missAndFall() {
             debris.push({
-                x: x,
-                w: w,
-                y: baseYForLevel(level) - BLOCK_H,
-                vy: -40,
-                vx: (Math.random() - 0.5) * 40,
+                x: mover.x,
+                worldY: screenToWorldY(mover.screenY),
+                vy: mover.vy,
+                vx: (mover.x < VIEW_W / 2 ? -1 : 1) * 30,
                 rot: 0,
-                vrot: (Math.random() - 0.5) * 4,
-                index: level,
-                life: 1,
+                vrot: (Math.random() - 0.5) * 3,
+                index: stack.length,
+                life: 1.4,
             });
+            mover = null;
+            gameOver();
+        }
+
+        // Convert a screen-space y into the world-space y used by debris.
+        function screenToWorldY(screenY) {
+            return screenY - camera;
         }
 
         function gameOver() {
             state = 'over';
             combo = 0;
             updateHud();
-            if (score > best) {
+            const isBest = score > best;
+            if (isBest) {
                 best = score;
                 localStorage.setItem(BEST_KEY, String(best));
                 bestVal.textContent = best;
             }
-            overTitle.textContent = score >= best && score > 0 ? 'New Best! 🏆' : 'Tower Toppled!';
+            overTitle.textContent = isBest && score > 0 ? 'New Best! 🏆' : 'Tower Toppled!';
             overText.innerHTML = 'You stacked <strong>' + score + '</strong> block' +
                 (score === 1 ? '' : 's') + '.';
-            // Brief delay so the final debris is visible before the modal.
-            setTimeout(() => overModal.classList.add('active'), 650);
+            // Brief delay so the missed block is seen falling before the modal.
+            setTimeout(() => overModal.classList.add('active'), 700);
         }
 
         /* ---------------------------------------------------------------
@@ -336,29 +345,42 @@
          * Update & render loop
          * ------------------------------------------------------------- */
         function update(dt) {
-            if (state === 'playing') {
-                // Move the sliding block at a steady pace, bouncing off edges.
-                mover.x += mover.dir * SPEED * dt;
-                if (mover.x <= 0) { mover.x = 0; mover.dir = 1; }
-                const maxX = VIEW_W - mover.w;
-                if (mover.x >= maxX) { mover.x = maxX; mover.dir = -1; }
+            if (state === 'playing' && mover) {
+                if (mover.phase === 'slide') {
+                    // Slide back and forth at the top — steady within a block,
+                    // but faster with each block already stacked.
+                    mover.x += mover.dir * mover.speed * dt;
+                    if (mover.x <= 0) { mover.x = 0; mover.dir = 1; }
+                    const maxX = VIEW_W - BLOCK_W;
+                    if (mover.x >= maxX) { mover.x = maxX; mover.dir = -1; }
+                } else {
+                    // Falling toward the stack.
+                    mover.vy += FALL_GRAVITY * dt;
+                    mover.screenY += mover.vy * dt;
+                    const landingScreenY = baseYForLevel(stack.length) - BLOCK_H + camera;
+                    if (mover.screenY >= landingScreenY) {
+                        mover.screenY = landingScreenY;
+                        land();
+                    }
+                }
             }
 
-            // Ease the camera so the top of the tower stays in the upper third.
+            // Ease the camera so the top of the tower stays in the lower-middle,
+            // leaving plenty of empty sky above for the block to drop through.
             const towerTop = baseYForLevel(stack.length - 1) - BLOCK_H;
-            const desiredTopScreen = VIEW_H * 0.42;
-            cameraTarget = Math.max(0, (desiredTopScreen) - towerTop);
+            const desiredTopScreen = VIEW_H * 0.6;
+            cameraTarget = Math.max(0, desiredTopScreen - towerTop);
             camera += (cameraTarget - camera) * Math.min(1, dt * 6);
 
-            // Advance falling debris.
+            // Advance tumbling debris.
             for (let i = debris.length - 1; i >= 0; i--) {
                 const d = debris[i];
-                d.vy += 520 * dt;          // gravity
-                d.y += d.vy * dt;
+                d.vy += FALL_GRAVITY * dt;
+                d.worldY += d.vy * dt;
                 d.x += d.vx * dt;
                 d.rot += d.vrot * dt;
-                d.life -= dt * 0.8;
-                if (d.y - camera > VIEW_H + 80 || d.life <= 0) debris.splice(i, 1);
+                d.life -= dt * 0.6;
+                if (d.worldY + camera > VIEW_H + 120 || d.life <= 0) debris.splice(i, 1);
             }
         }
 
@@ -369,44 +391,44 @@
             for (const b of stack) {
                 const y = baseYForLevel(b.index) - BLOCK_H + camera;
                 if (y > VIEW_H + 40) continue; // scrolled off the bottom — skip
-                window.BlockSkins.draw(ctx, { x: b.x, y: y, w: b.w, h: BLOCK_H }, b.index, skinId);
+                window.BlockSkins.draw(ctx, { x: b.x, y: y, w: BLOCK_W, h: BLOCK_H }, b.index, skinId);
             }
 
-            // Falling debris (slightly faded).
+            // Tumbling debris (slightly faded).
             for (const d of debris) {
                 ctx.save();
                 ctx.globalAlpha = Math.max(0, Math.min(1, d.life));
-                const cx = d.x + d.w / 2;
-                const cy = d.y + BLOCK_H / 2 + camera;
-                ctx.translate(cx, cy);
+                ctx.translate(d.x + BLOCK_W / 2, d.worldY + camera + BLOCK_H / 2);
                 ctx.rotate(d.rot);
                 window.BlockSkins.draw(
                     ctx,
-                    { x: -d.w / 2, y: -BLOCK_H / 2, w: d.w, h: BLOCK_H },
+                    { x: -BLOCK_W / 2, y: -BLOCK_H / 2, w: BLOCK_W, h: BLOCK_H },
                     d.index, skinId
                 );
                 ctx.restore();
             }
 
-            // The sliding block on top.
-            if (state === 'playing') {
-                const y = baseYForLevel(stack.length) - BLOCK_H + camera;
-                window.BlockSkins.draw(ctx, { x: mover.x, y: y, w: mover.w, h: BLOCK_H },
-                    stack.length, skinId);
-
-                // A faint guide line showing where it will land.
+            // The active block (sliding at the top, or mid-fall).
+            if (state === 'playing' && mover) {
                 const below = stack[stack.length - 1];
+
+                // Dashed guide lines from the target block up to the slider, so
+                // the landing spot is easy to read.
+                const belowTopY = baseYForLevel(below.index) - BLOCK_H + camera;
                 ctx.save();
-                ctx.strokeStyle = 'rgba(63, 108, 246, 0.25)';
+                ctx.strokeStyle = 'rgba(63, 108, 246, 0.22)';
                 ctx.setLineDash([4, 5]);
                 ctx.lineWidth = 1;
                 ctx.beginPath();
-                ctx.moveTo(below.x, y + BLOCK_H);
-                ctx.lineTo(below.x, baseYForLevel(below.index) - BLOCK_H + camera);
-                ctx.moveTo(below.x + below.w, y + BLOCK_H);
-                ctx.lineTo(below.x + below.w, baseYForLevel(below.index) - BLOCK_H + camera);
+                ctx.moveTo(below.x, 0);
+                ctx.lineTo(below.x, belowTopY);
+                ctx.moveTo(below.x + BLOCK_W, 0);
+                ctx.lineTo(below.x + BLOCK_W, belowTopY);
                 ctx.stroke();
                 ctx.restore();
+
+                window.BlockSkins.draw(ctx, { x: mover.x, y: mover.screenY, w: BLOCK_W, h: BLOCK_H },
+                    stack.length, skinId);
             }
         }
 

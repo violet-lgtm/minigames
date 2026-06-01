@@ -50,14 +50,15 @@ A reaction-time test disguised as a slot machine — stop each of three spinning
 **Play:** [Reaction Slots](slot-reaction/index.html)
 
 ### 🧱 Block Stacker
-A timing game where a block slides back and forth at a steady pace above your tower — drop it the instant it lines up to stack as high as you can.
+A timing game where a square block slides back and forth at the very top of the screen — drop it to fall onto the tower and stack as high as you can before you miss.
 
 **Features:**
-- A block glides left/right at a steady, predictable pace; tap, click or press Space to drop it
-- Overhang is sliced off on every imperfect drop, so the next block is narrower
-- Land a perfect line-up to keep your full width and build a combo
-- The camera scrolls upward as your tower climbs
-- Sliced pieces tumble away with a little physics flourish
+- The block slides left/right at the top; tap, click or press Space to drop it straight down onto the stack
+- Every block keeps its full size to stand on — no slicing, so you only fail on a complete miss
+- Each successful drop makes the next block slide back and forth faster
+- Land a perfect line-up to snap flush and build a combo
+- The camera scrolls upward as your tower climbs, leaving open sky for the drop
+- Missed blocks tumble past the tower with a little physics flourish
 - Swappable block styles (Spectrum, Sunset, Ocean, Slate, Candy) with a simple registry for adding your own
 - Tracks your best height locally
 

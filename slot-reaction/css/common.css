@@ -50,25 +50,25 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 24px 0 40px;
+    padding: 12px 0 16px;
 }
 
 /* ----- Layout ----- */
 .container {
     max-width: 720px;
     width: 100%;
-    padding: 20px;
+    padding: 8px 20px;
 }
 
 header {
     text-align: center;
-    margin-bottom: 24px;
+    margin-bottom: 12px;
 }
 
 h1 {
-    font-size: 2.4em;
+    font-size: 2.2em;
     font-weight: 800;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     color: var(--text-primary);
     letter-spacing: -0.5px;
 }
@@ -140,8 +140,8 @@ p {
     background: var(--surface);
     border: 1px solid var(--surface-border);
     border-radius: 14px;
-    padding: 18px;
-    margin: 18px 0;
+    padding: 14px;
+    margin: 10px 0;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 

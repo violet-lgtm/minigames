@@ -7,6 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Reaction Slots - Stop the Reels!</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="js/i18n.js"></script>
     <style>
         .menu-container {
             max-width: 720px;
@@ -83,7 +84,7 @@
     <div class="container menu-container">
         <header>
             <h1>🎰 Reaction Slots</h1>
-            <p>Three reels are spinning. Stop each one the instant the lucky 7 hits the line!</p>
+            <p data-i18n="subtitle">Three reels are spinning. Stop each one the instant the lucky 7 hits the line!</p>
         </header>
 
         <div class="preview-row">
@@ -93,19 +94,27 @@
         </div>
 
         <div class="menu-buttons">
-            <a href="game.html" class="btn btn-primary menu-btn">🎮 Play Game</a>
+            <a href="game.html" class="btn btn-primary menu-btn" data-i18n="play">🎮 Play Game</a>
         </div>
 
-        <ul class="feature-list">
-            <li>A pure reaction-time test disguised as a slot machine</li>
-            <li>Stop all 3 spinning reels on the glowing target symbol</li>
-            <li>Each reel spins faster than the last</li>
-            <li>Millisecond-accurate timing and PERFECT / GREAT / GOOD ratings</li>
-            <li>Land a neighbouring symbol? Still bag partial NEAR points</li>
-            <li>Hit the target on multiple reels for a ×2 / ×3 combo multiplier</li>
-            <li>Tracks your best score locally</li>
-            <li>Play with a tap, click, or the spacebar</li>
-        </ul>
+        <ul class="feature-list" id="featureList"></ul>
     </div>
+
+    <script>
+        (function () {
+            const I = window.SlotI18n;
+            const ul = document.getElementById('featureList');
+            function renderFeatures() {
+                ul.innerHTML = '';
+                (I.tf('features') || []).forEach((f) => {
+                    const li = document.createElement('li');
+                    li.textContent = f;
+                    ul.appendChild(li);
+                });
+            }
+            I.onChange(renderFeatures);
+            renderFeatures();
+        })();
+    </script>
 </body>
 </html>

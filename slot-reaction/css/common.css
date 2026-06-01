@@ -50,25 +50,25 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 24px 0 40px;
+    padding: 12px 0 16px;
 }
 
 /* ----- Layout ----- */
 .container {
     max-width: 720px;
     width: 100%;
-    padding: 20px;
+    padding: 8px 20px;
 }
 
 header {
     text-align: center;
-    margin-bottom: 24px;
+    margin-bottom: 12px;
 }
 
 h1 {
-    font-size: 2.4em;
+    font-size: 2.2em;
     font-weight: 800;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     color: var(--text-primary);
     letter-spacing: -0.5px;
 }
@@ -140,8 +140,8 @@ p {
     background: var(--surface);
     border: 1px solid var(--surface-border);
     border-radius: 14px;
-    padding: 18px;
-    margin: 18px 0;
+    padding: 14px;
+    margin: 10px 0;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
@@ -214,10 +214,52 @@ p {
     margin-bottom: 16px;
 }
 
+/* ----- Language menu ----- */
+.lang-menu {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    border-radius: 22px;
+    padding: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    z-index: 300;
+}
+
+.lang-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.82em;
+    font-weight: 700;
+    padding: 6px 11px;
+    border-radius: 18px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.lang-btn:hover { background: var(--option-bg); }
+
+.lang-btn.active {
+    background: var(--accent);
+    color: var(--text-primary);
+}
+
+.lang-flag { font-size: 1.05em; line-height: 1; }
+
 /* ----- Responsive ----- */
 @media (max-width: 768px) {
     h1 { font-size: 1.9em; }
     h2 { font-size: 1.3em; }
-    .container { padding: 14px; }
+    .container { padding: 14px; padding-top: 40px; }
     .modal-content { padding: 28px 20px; }
+    .lang-menu { top: 10px; right: 10px; }
+    .lang-btn { padding: 5px 8px; font-size: 0.78em; }
 }

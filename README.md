@@ -44,6 +44,7 @@ A reaction-time test disguised as a slot machine — stop each of three spinning
 - Hit the goal on multiple reels for a ×2 / ×3 combo multiplier
 - Snap-to-symbol stop for a satisfying, tidy finish
 - Tracks your best score locally
+- Available in English, Dutch and German with an in-game language picker
 - Play with a tap, click, or the spacebar
 
 **Play:** [Reaction Slots](slot-reaction/index.html)

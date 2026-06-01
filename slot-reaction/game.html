@@ -7,6 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Reaction Slots</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="js/i18n.js"></script>
     <style>
         .container {
             max-width: 720px;
@@ -242,25 +243,25 @@
 
         <div class="topbar info-panel">
             <div class="stat">
-                <div class="stat-label">Reel</div>
+                <div class="stat-label" data-i18n="stat_reel">Reel</div>
                 <div class="stat-value" id="reelProgress">0 / 3</div>
             </div>
             <div class="stat">
-                <div class="stat-label">Score</div>
+                <div class="stat-label" data-i18n="stat_score">Score</div>
                 <div class="stat-value" id="scoreVal">0</div>
             </div>
             <div class="stat">
-                <div class="stat-label">Combo</div>
+                <div class="stat-label" data-i18n="stat_combo">Combo</div>
                 <div class="stat-value" id="multiVal">×1</div>
             </div>
             <div class="stat">
-                <div class="stat-label">Best</div>
+                <div class="stat-label" data-i18n="stat_best">Best</div>
                 <div class="stat-value" id="bestVal">–</div>
             </div>
         </div>
 
-        <div class="target-banner">
-            Stop each reel on <span class="sym" id="targetSym">7️⃣</span> as it crosses the line
+        <div class="target-banner" id="targetBanner">
+            Stop each reel on <span class="sym">7️⃣</span> as it crosses the line
         </div>
 
         <div class="machine">
@@ -270,18 +271,18 @@
             </div>
         </div>
 
-        <div class="hint">Tip: tap STOP, click, or press <strong>Space</strong> to lock the active reel.</div>
+        <div class="hint" id="hint">Tip: tap STOP, click, or press <strong>Space</strong> to lock the active reel.</div>
     </div>
 
     <!-- Results modal -->
     <div class="modal" id="resultModal">
         <div class="modal-content">
             <div class="win-message" id="resultTitle">Round Complete!</div>
-            <div class="final-score"><span id="finalScore">0</span><span style="font-size:0.45em;color:var(--text-secondary)"> pts</span></div>
+            <div class="final-score"><span id="finalScore">0</span><span style="font-size:0.45em;color:var(--text-secondary)" data-i18n="pts"> pts</span></div>
             <ul class="breakdown" id="breakdown"></ul>
-            <div id="newBest" style="color:var(--good-color);font-weight:bold;margin-bottom:10px;display:none">🏆 New best score!</div>
-            <button class="btn btn-primary" id="playAgainBtn">🔄 Play Again</button>
-            <button class="btn btn-secondary" id="goBackBtn">← Ga terug</button>
+            <div id="newBest" data-i18n="newbest" style="color:var(--good-color);font-weight:bold;margin-bottom:10px;display:none">🏆 New best score!</div>
+            <button class="btn btn-primary" id="playAgainBtn" data-i18n="modal_playagain">🔄 Play Again</button>
+            <button class="btn btn-secondary" id="goBackBtn" data-i18n="modal_back">← Go back</button>
         </div>
     </div>
 
@@ -308,14 +309,14 @@
         // When the GOAL symbol lands on the payline, how centred it is decides the tier.
         // Absolute alignment error (px) -> tier. Scaled by CELL at runtime.
         const HIT_RATINGS = [
-            { name: 'PERFECT', cls: 'tag-perfect', frac: 0.09, points: 100, hit: true },
-            { name: 'GREAT',   cls: 'tag-great',   frac: 0.24, points: 60,  hit: true },
-            { name: 'GOOD',    cls: 'tag-good',    frac: 0.50, points: 30,  hit: true },
+            { key: 'perfect', cls: 'tag-perfect', frac: 0.09, points: 100, hit: true },
+            { key: 'great',   cls: 'tag-great',   frac: 0.24, points: 60,  hit: true },
+            { key: 'good',    cls: 'tag-good',    frac: 0.50, points: 30,  hit: true },
         ];
         // A neighbour of the goal landed on the line instead — still worth a little.
-        const NEAR = { name: 'NEAR', cls: 'tag-near', points: 15, hit: false };
+        const NEAR = { key: 'near', cls: 'tag-near', points: 15, hit: false };
         // Two or more symbols away from the goal.
-        const MISS = { name: 'MISS', cls: 'tag-miss', points: 0, hit: false };
+        const MISS = { key: 'miss', cls: 'tag-miss', points: 0, hit: false };
 
         // Multiplier applied to the round score for landing the goal symbol on
         // multiple reels (a "combo" of lucky 7s).
@@ -324,6 +325,10 @@
             if (hits >= 2) return 2;
             return 1;
         }
+
+        // ---- i18n ----
+        const I = window.SlotI18n;
+        const t = (key, vars) => I.t(key, vars);
 
         // ---- State ----
         const reels = [];          // { el, strip, resultEl, pos, speed, stopped, result }
@@ -334,6 +339,8 @@
         let baseScore = 0;
         let multiplier = 1;
         let best = loadBest();
+        let btnState = 'start';    // which label the STOP button shows: start | stop | again
+        let lastResult = null;     // cached round result so we can re-render on language change
 
         // ---- DOM ----
         const reelsContainer = document.getElementById('reels');
@@ -342,14 +349,25 @@
         const multiVal = document.getElementById('multiVal');
         const bestVal = document.getElementById('bestVal');
         const reelProgress = document.getElementById('reelProgress');
+        const targetBanner = document.getElementById('targetBanner');
+        const hintEl = document.getElementById('hint');
         const resultModal = document.getElementById('resultModal');
         const finalScoreEl = document.getElementById('finalScore');
         const breakdownEl = document.getElementById('breakdown');
         const newBestEl = document.getElementById('newBest');
         const resultTitle = document.getElementById('resultTitle');
 
-        document.getElementById('targetSym').textContent = TARGET_SYMBOL;
         bestVal.textContent = best == null ? '–' : best;
+
+        function setBtn() { stopBtn.textContent = t('btn_' + btnState); }
+
+        function renderBanner() {
+            targetBanner.innerHTML = t('banner', { sym: '<span class="sym">' + TARGET_SYMBOL + '</span>' });
+        }
+
+        function renderHint() {
+            hintEl.innerHTML = t('hint', { key: '<strong>' + t('key_space') + '</strong>' });
+        }
 
         function loadBest() {
             try {
@@ -489,7 +507,8 @@
             buildReels();
             reels[0].el.classList.add('active');
             updateProgress();
-            stopBtn.textContent = 'STOP';
+            btnState = 'stop';
+            setBtn();
             lastTs = 0;
             rafId = requestAnimationFrame(loop);
         }
@@ -549,50 +568,33 @@
         function showReelResult(reel, rating, ms) {
             const el = reel.resultEl;
             if (rating === MISS) {
-                el.textContent = 'MISS';
+                el.textContent = t('rating_miss');
             } else if (rating === NEAR) {
-                el.textContent = `NEAR +${rating.points}`;
+                el.textContent = `${t('rating_near')} +${rating.points}`;
             } else {
-                el.textContent = `${rating.name} · ${ms}ms`;
+                el.textContent = `${t('rating_' + rating.key)} · ${ms}ms`;
             }
             el.className = 'reel-result show ' + rating.cls;
         }
 
         function finishRound() {
-            stopBtn.textContent = 'PLAY AGAIN';
+            btnState = 'again';
+            setBtn();
             cancelAnimationFrame(rafId);
             rafId = null;
             started = false;
 
-            // Build the breakdown.
-            breakdownEl.innerHTML = '';
-            reels.forEach((reel, i) => {
-                const { rating, ms } = reel.result;
-                const detail = rating.hit ? `${ms}ms off`
-                    : rating === NEAR ? 'next to goal'
-                    : 'off target';
-                const li = document.createElement('li');
-                li.innerHTML =
-                    `<span>Reel ${i + 1} <span style="opacity:.6">(${detail})</span></span>` +
-                    `<span class="tag ${rating.cls}">${rating.name} +${rating.points}</span>`;
-                breakdownEl.appendChild(li);
-            });
-
-            const hits = reels.filter(r => r.result.rating.hit).length;
+            const perReel = reels.map(r => ({
+                key: r.result.rating.key,
+                cls: r.result.rating.cls,
+                points: r.result.rating.points,
+                hit: r.result.rating.hit,
+                isNear: r.result.rating === NEAR,
+                ms: r.result.ms,
+            }));
+            const hits = perReel.filter(r => r.hit).length;
             multiplier = comboMultiplier(hits);
             const finalScore = baseScore * multiplier;
-
-            // Multiplier line in the modal (only interesting when it kicks in).
-            if (multiplier > 1) {
-                const li = document.createElement('li');
-                li.style.borderBottom = 'none';
-                li.innerHTML =
-                    `<span>🎯 ${hits}× lucky ${TARGET_SYMBOL} combo</span>` +
-                    `<span class="tag tag-perfect">×${multiplier}</span>`;
-                breakdownEl.appendChild(li);
-            }
-
-            finalScoreEl.textContent = finalScore;
 
             let isBest = false;
             if (best == null || finalScore > best) {
@@ -601,21 +603,50 @@
                 bestVal.textContent = best;
                 isBest = finalScore > 0;
             }
-            newBestEl.style.display = isBest ? 'block' : 'none';
 
-            if (hits === NUM_REELS && baseScore === HIT_RATINGS[0].points * NUM_REELS) {
-                resultTitle.textContent = '🎉 JACKPOT! Flawless!';
-            } else if (hits === NUM_REELS) {
-                resultTitle.textContent = '🎯 Triple combo!';
-            } else if (finalScore >= 180) {
-                resultTitle.textContent = '🔥 Sharp reflexes!';
-            } else if (finalScore >= 60) {
-                resultTitle.textContent = 'Round Complete!';
-            } else {
-                resultTitle.textContent = 'Keep practising!';
+            const flawless = hits === NUM_REELS && baseScore === HIT_RATINGS[0].points * NUM_REELS;
+            lastResult = { perReel, hits, multiplier, finalScore, isBest, flawless };
+
+            renderResults();
+            setTimeout(() => resultModal.classList.add('active'), 650);
+        }
+
+        // Render the cached round result in the current language.
+        function renderResults() {
+            if (!lastResult) return;
+            const { perReel, hits, multiplier: mult, finalScore, isBest, flawless } = lastResult;
+
+            breakdownEl.innerHTML = '';
+            perReel.forEach((r, i) => {
+                const detail = r.hit ? t('detail_off', { ms: r.ms })
+                    : r.isNear ? t('detail_near')
+                    : t('detail_miss');
+                const li = document.createElement('li');
+                li.innerHTML =
+                    `<span>${t('reel_label', { n: i + 1 })} <span style="opacity:.6">(${detail})</span></span>` +
+                    `<span class="tag ${r.cls}">${t('rating_' + r.key)} +${r.points}</span>`;
+                breakdownEl.appendChild(li);
+            });
+
+            // Multiplier line in the modal (only interesting when it kicks in).
+            if (mult > 1) {
+                const li = document.createElement('li');
+                li.style.borderBottom = 'none';
+                li.innerHTML =
+                    `<span>${t('combo_line', { hits, sym: TARGET_SYMBOL })}</span>` +
+                    `<span class="tag tag-perfect">×${mult}</span>`;
+                breakdownEl.appendChild(li);
             }
 
-            setTimeout(() => resultModal.classList.add('active'), 650);
+            finalScoreEl.textContent = finalScore;
+            newBestEl.style.display = isBest ? 'block' : 'none';
+
+            resultTitle.textContent =
+                flawless ? t('title_jackpot')
+                : hits === NUM_REELS ? t('title_triple')
+                : finalScore >= 180 ? t('title_sharp')
+                : finalScore >= 60 ? t('title_complete')
+                : t('title_practise');
         }
 
         // ---- Input ----
@@ -648,6 +679,16 @@
                 if (c) CELL = c.getBoundingClientRect().height || CELL;
             }
         });
+
+        // Re-apply every translatable string when the language changes.
+        function applyLang() {
+            setBtn();
+            renderBanner();
+            renderHint();
+            if (resultModal.classList.contains('active')) renderResults();
+        }
+        I.onChange(applyLang);
+        applyLang();
 
         // Show idle reels behind the START button.
         buildReels();

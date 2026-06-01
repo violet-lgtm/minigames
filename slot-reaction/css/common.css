@@ -50,53 +50,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    /* leave room for the fixed app bar (top) and bottom bar */
-    padding: 84px 0 92px;
+    padding: 24px 0 40px;
 }
-
-/* ----- App bar (top) ----- */
-.app-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 64px;
-    background: var(--header-bg);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 18px;
-    z-index: 200;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-}
-
-.app-actions {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-}
-
-.app-icon {
-    color: var(--header-fg);
-    background: none;
-    border: none;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    padding: 4px;
-    transition: opacity 0.2s, transform 0.2s;
-}
-
-.app-icon svg {
-    width: 26px;
-    height: 26px;
-    display: block;
-}
-
-.app-icon:hover { opacity: 0.8; }
-.app-back:hover { transform: translateX(-3px); }
 
 /* ----- Layout ----- */
 .container {
@@ -259,65 +214,10 @@ p {
     margin-bottom: 16px;
 }
 
-/* ----- Bottom bar ----- */
-.bottom-bar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: var(--surface);
-    border-top: 1px solid var(--surface-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
-    z-index: 200;
-}
-
-.bottom-link {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 1em;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
-    padding: 6px;
-}
-
-.bottom-link:disabled { opacity: 0.35; cursor: default; }
-
-.bottom-pill {
-    flex: 0 1 auto;
-    background: var(--option-bg);
-    color: var(--text-primary);
-    border: none;
-    border-radius: 22px;
-    padding: 12px 26px;
-    font-size: 0.95em;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    text-decoration: none;
-    cursor: pointer;
-    font-family: inherit;
-    white-space: nowrap;
-    transition: background 0.15s;
-}
-
-.bottom-pill:hover { background: var(--option-bg-hover); }
-
 /* ----- Responsive ----- */
 @media (max-width: 768px) {
     h1 { font-size: 1.9em; }
     h2 { font-size: 1.3em; }
     .container { padding: 14px; }
     .modal-content { padding: 28px 20px; }
-    .bottom-pill { padding: 11px 18px; font-size: 0.85em; }
-    .bottom-link { font-size: 0.95em; }
 }

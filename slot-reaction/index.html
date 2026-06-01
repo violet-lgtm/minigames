@@ -46,7 +46,7 @@
             content: "\25C8";
             position: absolute;
             left: 0;
-            color: var(--primary-color);
+            color: var(--accent-strong);
         }
 
         .preview-row {
@@ -63,10 +63,10 @@
             align-items: center;
             justify-content: center;
             font-size: 2.6em;
-            background: linear-gradient(180deg, #fff 0%, #e9e9ef 100%);
-            border: 3px solid var(--primary-color);
+            background: linear-gradient(180deg, #fff 0%, #f4f4f6 100%);
+            border: 2px solid var(--surface-border);
             border-radius: 12px;
-            box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.25), 0 6px 16px rgba(0, 0, 0, 0.35);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.10);
             animation: spinPeek 1.1s infinite ease-in-out;
         }
 
@@ -80,7 +80,22 @@
     </style>
 </head>
 <body>
-    <a href="../" class="back-link">← All Games</a>
+    <header class="app-bar">
+        <a href="../" class="app-icon app-back" aria-label="Alle spellen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </a>
+        <div class="app-actions">
+            <span class="app-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+            </span>
+            <span class="app-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21.5l8.8-8.8a5 5 0 0 0 0-7.1z"/></svg>
+            </span>
+            <span class="app-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><line x1="4" y1="6" x2="4.01" y2="6"/><line x1="4" y1="12" x2="4.01" y2="12"/><line x1="4" y1="18" x2="4.01" y2="18"/></svg>
+            </span>
+        </div>
+    </header>
 
     <div class="container menu-container">
         <header>
@@ -109,5 +124,14 @@
             <li>Play with a tap, click, or the spacebar</li>
         </ul>
     </div>
+
+    <nav class="bottom-bar">
+        <span class="bottom-link">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Vorige
+        </span>
+        <a href="../" class="bottom-pill">Alle spellen</a>
+        <span class="bottom-link">Volgende</span>
+    </nav>
 </body>
 </html>

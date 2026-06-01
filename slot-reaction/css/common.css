@@ -1,21 +1,39 @@
-/* Reaction Slots - Common Styles */
+/* Reaction Slots - Common Styles (stqry-style light theme) */
 
 :root {
-    --bg-gradient-start: #2a0a14;
-    --bg-gradient-end: #14060f;
-    --primary-color: #ffd24a;
-    --primary-gradient-start: #ffe27a;
-    --primary-gradient-end: #f5a623;
-    --secondary-gradient-start: #e83a5f;
-    --secondary-gradient-end: #a01030;
-    --accent-color: #ffd24a;
-    --text-primary: #fff;
-    --text-secondary: #d9a9b3;
-    --panel-bg: rgba(255, 255, 255, 0.05);
-    --panel-border: rgba(255, 210, 74, 0.25);
-    --good-color: #4ade80;
-    --ok-color: #facc15;
-    --miss-color: #f87171;
+    /* Brand */
+    --header-bg: #f6b62e;        /* yellow app bar */
+    --header-fg: #ffffff;        /* icons on the app bar */
+    --accent: #f6b62e;           /* primary yellow */
+    --accent-strong: #e2a31c;    /* pressed / border yellow */
+
+    /* Surfaces */
+    --bg: #ffffff;
+    --surface: #ffffff;          /* cards */
+    --surface-border: #e7e7e7;
+    --option-bg: #dcdcdc;        /* gray rounded blocks */
+    --option-bg-hover: #d0d0d0;
+
+    /* Text */
+    --text-primary: #1a1a1a;
+    --text-secondary: #5e5e5e;
+
+    /* Ratings */
+    --good-color: #2e9e4f;
+    --ok-color: #e0a21b;
+    --miss-color: #d9534f;
+
+    /* Legacy aliases kept so per-page styles resolve cleanly */
+    --primary-color: #1a1a1a;
+    --primary-gradient-start: #1a1a1a;
+    --primary-gradient-end: #1a1a1a;
+    --secondary-gradient-start: #f6b62e;
+    --secondary-gradient-end: #e2a31c;
+    --accent-color: #f6b62e;
+    --bg-gradient-start: #ffffff;
+    --bg-gradient-end: #ffffff;
+    --panel-bg: #f4f4f4;
+    --panel-border: #e7e7e7;
 }
 
 * {
@@ -26,23 +44,65 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background:
-        radial-gradient(circle at 50% 0%, rgba(255, 210, 74, 0.12), transparent 60%),
-        linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-    background-attachment: fixed;
+    background: var(--bg);
     color: var(--text-primary);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    /* leave room for the fixed app bar (top) and bottom bar */
+    padding: 84px 0 92px;
 }
 
+/* ----- App bar (top) ----- */
+.app-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--header-bg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    z-index: 200;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.app-actions {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.app-icon {
+    color: var(--header-fg);
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    padding: 4px;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.app-icon svg {
+    width: 26px;
+    height: 26px;
+    display: block;
+}
+
+.app-icon:hover { opacity: 0.8; }
+.app-back:hover { transform: translateX(-3px); }
+
+/* ----- Layout ----- */
 .container {
-    max-width: 900px;
+    max-width: 720px;
     width: 100%;
     padding: 20px;
-    padding-top: 70px;
 }
 
 header {
@@ -51,37 +111,38 @@ header {
 }
 
 h1 {
-    font-size: 3em;
+    font-size: 2.4em;
+    font-weight: 800;
     margin-bottom: 10px;
-    background: linear-gradient(45deg, var(--primary-gradient-start), var(--primary-gradient-end));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 0 2px 12px rgba(245, 166, 35, 0.3);
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
 }
 
 h2 {
-    font-size: 1.8em;
-    margin-bottom: 20px;
-    color: var(--primary-color);
+    font-size: 1.6em;
+    font-weight: 800;
+    margin-bottom: 16px;
+    color: var(--text-primary);
 }
 
 p {
     color: var(--text-secondary);
-    margin-bottom: 24px;
-    font-size: 1.1em;
+    margin-bottom: 22px;
+    font-size: 1.05em;
+    line-height: 1.5;
 }
 
-/* Buttons */
+/* ----- Buttons ----- */
 .btn {
-    background: linear-gradient(135deg, var(--secondary-gradient-start) 0%, var(--secondary-gradient-end) 100%);
+    background: var(--option-bg);
     color: var(--text-primary);
     border: none;
-    padding: 15px 30px;
-    font-size: 1.1em;
-    border-radius: 8px;
+    padding: 16px 26px;
+    font-size: 1.05em;
+    font-weight: 600;
+    border-radius: 14px;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: background 0.15s, transform 0.15s, box-shadow 0.2s;
     text-decoration: none;
     display: inline-block;
     margin: 5px;
@@ -89,64 +150,68 @@ p {
 }
 
 .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(232, 58, 95, 0.4);
+    background: var(--option-bg-hover);
+    transform: translateY(-1px);
 }
 
-.btn:active {
-    transform: translateY(0);
-}
+.btn:active { transform: translateY(0); }
 
 .btn:disabled {
-    opacity: 0.4;
+    opacity: 0.45;
     cursor: not-allowed;
     transform: none;
-    box-shadow: none;
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 100%);
-    color: #2a0a14;
-    font-weight: bold;
+    background: var(--accent);
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.btn-primary:hover {
+    background: var(--accent-strong);
+    box-shadow: 0 6px 18px rgba(246, 182, 46, 0.45);
 }
 
 .btn-secondary {
-    background: linear-gradient(135deg, var(--secondary-gradient-start) 0%, var(--secondary-gradient-end) 100%);
+    background: var(--option-bg);
+    color: var(--text-primary);
 }
 
-/* Info panels */
+.btn-secondary:hover { background: var(--option-bg-hover); }
+
+/* ----- Cards / panels ----- */
 .info-panel {
-    background: var(--panel-bg);
-    border: 2px solid var(--panel-border);
-    border-radius: 10px;
-    padding: 20px;
-    margin: 20px 0;
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    border-radius: 14px;
+    padding: 18px;
+    margin: 18px 0;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .stats {
     display: flex;
     justify-content: space-around;
     flex-wrap: wrap;
-    gap: 20px;
+    gap: 16px;
 }
 
-.stat {
-    text-align: center;
-}
+.stat { text-align: center; }
 
 .stat-label {
     color: var(--text-secondary);
-    font-size: 0.9em;
-    margin-bottom: 5px;
+    font-size: 0.85em;
+    margin-bottom: 4px;
 }
 
 .stat-value {
-    font-size: 2em;
-    font-weight: bold;
-    color: var(--primary-color);
+    font-size: 1.8em;
+    font-weight: 800;
+    color: var(--text-primary);
 }
 
-/* Controls */
+/* ----- Controls ----- */
 .controls {
     display: flex;
     justify-content: center;
@@ -155,76 +220,104 @@ p {
     margin: 20px 0;
 }
 
-/* Modal */
+/* ----- Modal ----- */
 .modal {
     display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
     z-index: 1000;
     align-items: center;
     justify-content: center;
     padding: 20px;
 }
 
-.modal.active {
-    display: flex;
-}
+.modal.active { display: flex; }
 
 .modal-content {
-    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-    border: 3px solid var(--accent-color);
-    border-radius: 15px;
-    padding: 40px;
-    max-width: 500px;
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    border-top: 6px solid var(--accent);
+    border-radius: 16px;
+    padding: 36px 32px;
+    max-width: 460px;
+    width: 100%;
     text-align: center;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25);
     animation: modalFadeIn 0.3s;
 }
 
 @keyframes modalFadeIn {
-    from { opacity: 0; transform: scale(0.8); }
+    from { opacity: 0; transform: scale(0.85); }
     to { opacity: 1; transform: scale(1); }
 }
 
 .win-message {
-    font-size: 2em;
-    color: var(--primary-color);
-    margin-bottom: 20px;
-    animation: pulse 1.2s infinite;
+    font-size: 1.7em;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 16px;
 }
 
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.06); }
-}
-
-/* Back link */
-.back-link {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    color: var(--primary-color);
-    text-decoration: none;
-    font-size: 1.2em;
+/* ----- Bottom bar ----- */
+.bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--surface-border);
     display: flex;
     align-items: center;
-    gap: 5px;
-    transition: transform 0.2s;
-    z-index: 100;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+    z-index: 200;
 }
 
-.back-link:hover {
-    transform: translateX(-5px);
+.bottom-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 1em;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 6px;
 }
 
-/* Responsive */
+.bottom-link:disabled { opacity: 0.35; cursor: default; }
+
+.bottom-pill {
+    flex: 0 1 auto;
+    background: var(--option-bg);
+    color: var(--text-primary);
+    border: none;
+    border-radius: 22px;
+    padding: 12px 26px;
+    font-size: 0.95em;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.bottom-pill:hover { background: var(--option-bg-hover); }
+
+/* ----- Responsive ----- */
 @media (max-width: 768px) {
-    h1 { font-size: 2.1em; }
+    h1 { font-size: 1.9em; }
     h2 { font-size: 1.3em; }
-    .btn { padding: 12px 24px; font-size: 1em; }
-    .container { padding: 12px; padding-top: 60px; }
+    .container { padding: 14px; }
     .modal-content { padding: 28px 20px; }
+    .bottom-pill { padding: 11px 18px; font-size: 0.85em; }
+    .bottom-link { font-size: 0.95em; }
 }

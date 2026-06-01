@@ -40,15 +40,15 @@
         }
 
         .preview-block {
-            height: 26px;
+            height: 32px;
             border-radius: 6px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
             animation: settle 0.5s ease-out backwards;
         }
 
         @keyframes settle {
-            from { transform: translateY(-40px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+            from { transform: translateY(-60px); opacity: 0; }
+            to { opacity: 1; }
         }
 
         .feature-list {
@@ -128,7 +128,7 @@
     <div class="container menu-container">
         <header>
             <h1>🧱 Block Stacker</h1>
-            <p>A block slides back and forth at the top of the screen. Drop it the moment it lines up and build the tallest tower you can!</p>
+            <p>A block slides back and forth at the top of the screen. Drop it to fall onto the tower — line it up and build as high as you can before you miss!</p>
         </header>
 
         <div class="preview-tower" id="previewTower"></div>
@@ -143,9 +143,10 @@
         </div>
 
         <ul class="feature-list">
-            <li>Time your drop as the block glides across — steady, predictable pace</li>
-            <li>Overhang gets sliced off, so every miss makes the next block narrower</li>
-            <li>Nail a perfect line-up to keep your width and build a combo</li>
+            <li>The block slides at the very top — drop it to fall straight down onto the tower</li>
+            <li>Every block keeps its full size to stand on, so just don't miss the stack</li>
+            <li>Each drop makes the next block slide back and forth faster</li>
+            <li>Nail a perfect line-up to snap flush and build a combo</li>
             <li>The camera scrolls up as your tower climbs into the sky</li>
             <li>Swappable block styles — and an easy hook to add your own</li>
             <li>Tracks your best height locally; play with a tap, click or spacebar</li>
@@ -193,11 +194,14 @@
             function renderPreview() {
                 const skin = window.BlockSkins.get(current);
                 tower.innerHTML = '';
-                const widths = [150, 138, 150, 126, 140, 118];
-                widths.forEach((w, i) => {
+                // Equal-size, squarish blocks stacked with small offsets — the
+                // full block always stays, just like in the game.
+                const offsets = [0, 14, -10, 8, -6, 2];
+                offsets.forEach((dx, i) => {
                     const b = document.createElement('div');
                     b.className = 'preview-block';
-                    b.style.width = w + 'px';
+                    b.style.width = '46px';
+                    b.style.marginLeft = (dx * 2) + 'px';
                     b.style.background = skin.colorFor ? skin.colorFor(i) :
                         (skin.swatch || '#888');
                     b.style.animationDelay = (i * 0.08) + 's';

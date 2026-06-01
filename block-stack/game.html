@@ -143,13 +143,7 @@
             </div>
         </div>
 
-        <div class="controls">
-            <button class="btn btn-primary" id="dropBtn">⬇ Drop</button>
-            <button class="btn btn-secondary" id="restartBtn">↻ Restart</button>
-        </div>
-
-        <p class="hint">Tap the tower, press the Drop button, or hit <strong>Space</strong> to drop a block.</p>
-        <a href="index.html" class="back-link">← Back to menu</a>
+        <p class="hint">Tap the tower or hit <strong>Space</strong> to drop a block.</p>
     </div>
 
     <!-- Game over modal -->
@@ -502,10 +496,6 @@
         }
 
         canvas.addEventListener('pointerdown', onTap);
-        document.getElementById('dropBtn').addEventListener('click', () => {
-            if (state === 'playing') drop();
-        });
-        document.getElementById('restartBtn').addEventListener('click', reset);
         document.getElementById('playAgainBtn').addEventListener('click', reset);
 
         window.addEventListener('keydown', (e) => {

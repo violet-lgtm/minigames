@@ -281,7 +281,7 @@
             <ul class="breakdown" id="breakdown"></ul>
             <div id="newBest" style="color:var(--good-color);font-weight:bold;margin-bottom:10px;display:none">🏆 New best score!</div>
             <button class="btn btn-primary" id="playAgainBtn">🔄 Play Again</button>
-            <a href="../" class="btn btn-secondary">🏠 Menu</a>
+            <button class="btn btn-secondary" id="goBackBtn">← Ga terug</button>
         </div>
     </div>
 
@@ -632,6 +632,12 @@
         });
 
         document.getElementById('playAgainBtn').addEventListener('click', startGame);
+
+        // Return to whatever page the player came from.
+        document.getElementById('goBackBtn').addEventListener('click', () => {
+            if (history.length > 1) history.back();
+            else window.location.href = '../';
+        });
 
         // Recompute CELL on resize so scoring matches what is on screen.
         window.addEventListener('resize', () => {

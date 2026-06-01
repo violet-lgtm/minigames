@@ -301,7 +301,9 @@
         let CELL = 90;
 
         // Each reel spins faster than the last (px per millisecond).
-        const SPEEDS = [0.55, 0.78, 1.05];
+        // Eased off the top end: the final reel now runs at the old middle speed
+        // (0.78) and the middle reel gets a new, gentler difficulty (0.66).
+        const SPEEDS = [0.55, 0.66, 0.78];
 
         // When the GOAL symbol lands on the payline, how centred it is decides the tier.
         // Absolute alignment error (px) -> tier. Scaled by CELL at runtime.

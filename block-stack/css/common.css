@@ -2,10 +2,10 @@
 
 :root {
     /* Brand */
-    --header-bg: #3f6cf6;        /* blue app bar */
+    --header-bg: #f6b62e;        /* yellow app bar */
     --header-fg: #ffffff;
-    --accent: #3f6cf6;           /* primary blue */
-    --accent-strong: #2f54d4;    /* pressed / border blue */
+    --accent: #f6b62e;           /* primary yellow */
+    --accent-strong: #e2a31c;    /* pressed / border yellow */
 
     /* Surfaces */
     --bg: #ffffff;
@@ -13,6 +13,7 @@
     --surface-border: #e7e7e7;
     --option-bg: #dcdcdc;        /* gray rounded blocks */
     --option-bg-hover: #d0d0d0;
+    --well-bg: #ececec;          /* recessed cabinet well */
 
     /* Text */
     --text-primary: #1a1a1a;
@@ -23,9 +24,9 @@
     --ok-color: #e0a21b;
     --miss-color: #d9534f;
 
-    /* The playfield backdrop */
-    --field-top: #eef3ff;
-    --field-bottom: #dfe7fb;
+    /* The playfield window (light vertical gradient, like a slot reel) */
+    --field-top: #ffffff;
+    --field-bottom: #f4f4f6;
 }
 
 * {
@@ -111,13 +112,13 @@ p {
 
 .btn-primary {
     background: var(--accent);
-    color: #ffffff;
+    color: var(--text-primary);
     font-weight: 700;
 }
 
 .btn-primary:hover {
     background: var(--accent-strong);
-    box-shadow: 0 6px 18px rgba(63, 108, 246, 0.45);
+    box-shadow: 0 6px 18px rgba(246, 182, 46, 0.45);
 }
 
 .btn-secondary {

@@ -49,27 +49,12 @@
             width: 100%;
             display: block;
             border-radius: 10px;
-            background: linear-gradient(180deg, var(--field-top) 0%, var(--field-bottom) 100%);
+            background: #cfe6f2;
             box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.10);
             touch-action: manipulation;
             cursor: pointer;
         }
 
-        /* Soft top & bottom fades so the window reads like a slot reel */
-        .window-fade {
-            position: absolute;
-            left: 12px;
-            right: 12px;
-            height: 52px;
-            z-index: 2;
-            pointer-events: none;
-        }
-
-        .window-fade.bottom {
-            bottom: 12px;
-            border-radius: 0 0 10px 10px;
-            background: linear-gradient(0deg, rgba(255, 255, 255, 0.92), transparent);
-        }
 
         /* Big floating feedback word (PERFECT! / GREAT! …) */
         .flash {
@@ -138,7 +123,6 @@
         <div class="field-card">
             <div class="well">
                 <canvas id="game"></canvas>
-                <div class="window-fade bottom"></div>
                 <div class="flash" id="flash"></div>
             </div>
         </div>
@@ -194,6 +178,24 @@
         const FALL_GRAVITY = 1500;   // px/sec^2 while a dropped block falls
         const FALL_V0 = 80;          // initial downward speed on release
         const GROUND_Y = VIEW_H - 56; // y of the very bottom block's base line
+
+        // ---- background scene (sky → hills → street) ----
+        // How fast the sky deepens with altitude (camera units to full night).
+        const SKY_FULL = 1300;
+        const SKY_TOP_LOW = [143, 205, 238], SKY_TOP_HIGH = [18, 24, 52];
+        const SKY_HOR_LOW = [223, 240, 247], SKY_HOR_HIGH = [70, 92, 140];
+        const HILL_DUSK = [40, 48, 72];
+        // Fixed twinkling stars (screen-space; they're "infinitely" far away).
+        const STARS = Array.from({ length: 46 }, () => ({
+            x: Math.random() * VIEW_W,
+            y: Math.random() * VIEW_H * 0.72,
+            s: Math.random() < 0.3 ? 2 : 1,
+        }));
+        // A few clouds drifting near the horizon at low altitude.
+        const CLOUDS = [
+            { x: 50, y: 70, s: 1.1 }, { x: 250, y: 130, s: 1.35 },
+            { x: 160, y: 36, s: 0.85 }, { x: 320, y: 90, s: 0.7 },
+        ];
 
         const skinId = (function () {
             const id = localStorage.getItem(SKIN_KEY);
@@ -409,8 +411,117 @@
             }
         }
 
+        /* ---------------------------------------------------------------
+         * Background scene — a street backed by rolling hills, climbing up
+         * into an ever-deepening sky as the tower (and camera) rises.
+         * ------------------------------------------------------------- */
+        function mix(a, b, t) {
+            return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * t) + ',' +
+                Math.round(a[1] + (b[1] - a[1]) * t) + ',' +
+                Math.round(a[2] + (b[2] - a[2]) * t) + ')';
+        }
+
+        function drawCloud(x, y, s) {
+            ctx.beginPath();
+            ctx.arc(x, y, 14 * s, 0, Math.PI * 2);
+            ctx.arc(x + 16 * s, y + 4 * s, 11 * s, 0, Math.PI * 2);
+            ctx.arc(x - 16 * s, y + 4 * s, 10 * s, 0, Math.PI * 2);
+            ctx.arc(x, y + 7 * s, 14 * s, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // One rolling-hill layer. `f` is its parallax factor (smaller = further
+        // away and slower); `col` is mixed toward dusk with altitude.
+        function drawHills(f, off, crest, wl, phase, col, p) {
+            const base = GROUND_Y + camera * f + off;
+            if (base - crest > VIEW_H) return; // entirely below the view
+            ctx.fillStyle = mix(col, HILL_DUSK, p * 0.55);
+            ctx.beginPath();
+            ctx.moveTo(0, VIEW_H);
+            for (let x = 0; x <= VIEW_W; x += 10) {
+                ctx.lineTo(x, base - crest * (0.5 + 0.5 * Math.sin(x / wl + phase)));
+            }
+            ctx.lineTo(VIEW_W, VIEW_H);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawStreet() {
+            const gy = GROUND_Y + camera; // the line the houses stand on
+            if (gy > VIEW_H) return;      // street has scrolled below the view
+            const h = VIEW_H - gy;
+            ctx.fillStyle = '#6f7681';                 // asphalt
+            ctx.fillRect(0, gy, VIEW_W, h);
+            ctx.fillStyle = '#b9bcc2';                 // kerb
+            ctx.fillRect(0, gy, VIEW_W, 5);
+            ctx.fillStyle = '#565c66';
+            ctx.fillRect(0, gy + 5, VIEW_W, 2);
+            if (h > 18) {                              // centre line
+                ctx.strokeStyle = 'rgba(240, 222, 120, 0.85)';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([14, 12]);
+                ctx.beginPath();
+                ctx.moveTo(0, gy + h * 0.62);
+                ctx.lineTo(VIEW_W, gy + h * 0.62);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        function drawBackground() {
+            const p = Math.min(1, Math.max(0, camera) / SKY_FULL);
+
+            // Sky
+            const g = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+            g.addColorStop(0, mix(SKY_TOP_LOW, SKY_TOP_HIGH, p));
+            g.addColorStop(1, mix(SKY_HOR_LOW, SKY_HOR_HIGH, p));
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+            // Sun, sinking and fading as you climb
+            if (p < 0.96) {
+                const sx = VIEW_W * 0.76, sy = 64 + camera * 0.12;
+                const sg = ctx.createRadialGradient(sx, sy, 4, sx, sy, 48);
+                sg.addColorStop(0, 'rgba(255, 248, 218, ' + (0.95 * (1 - p)) + ')');
+                sg.addColorStop(1, 'rgba(255, 248, 218, 0)');
+                ctx.fillStyle = sg;
+                ctx.beginPath();
+                ctx.arc(sx, sy, 48, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Stars fade in with altitude
+            if (p > 0.32) {
+                ctx.save();
+                ctx.globalAlpha = Math.min(1, (p - 0.32) / 0.5) * 0.9;
+                ctx.fillStyle = '#fff';
+                for (const s of STARS) ctx.fillRect(s.x, s.y, s.s, s.s);
+                ctx.restore();
+            }
+
+            // Clouds drift near the horizon, fading out as you rise
+            if (p < 0.82) {
+                ctx.save();
+                ctx.globalAlpha = (1 - p / 0.82) * 0.85;
+                ctx.fillStyle = '#ffffff';
+                for (const c of CLOUDS) {
+                    const yy = c.y + camera * 0.32;
+                    if (yy > -40 && yy < VIEW_H + 40) drawCloud(c.x, yy, c.s);
+                }
+                ctx.restore();
+            }
+
+            // Rolling hills (far → near)
+            drawHills(0.45, -18, 88, 92, 0.0, [183, 201, 176], p);
+            drawHills(0.62, -6, 62, 64, 1.7, [156, 187, 134], p);
+            drawHills(0.80, 6, 44, 46, 3.1, [125, 168, 106], p);
+
+            // The street at the base
+            drawStreet();
+        }
+
         function render() {
-            ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+            drawBackground();
 
             if (state === 'playing') drawDropLine();
 

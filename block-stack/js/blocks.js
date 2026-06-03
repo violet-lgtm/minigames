@@ -141,6 +141,253 @@ window.BlockSkins = (function () {
      *  Built-in skins. Add your own by calling BlockSkins.register({...}).
      * ===================================================================== */
 
+    /* --------------------------------------------------------------------- *
+     *  Apeldoorn façades — Dutch row-house fronts wrapped in scaffolding.
+     *  Each block is rendered as a random façade so a tower reads like a
+     *  street of houses under construction. Façades are drawn once into
+     *  offscreen canvases (in a 200x160 design space) and blitted per block.
+     * --------------------------------------------------------------------- */
+
+    const FACADE_W = 200, FACADE_H = 160;
+
+    // ---- shared façade parts ----
+
+    function drawBrick(ctx, x, y, w, h) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x, y, w, h);
+        ctx.clip();
+        ctx.fillStyle = '#b15c44';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = 'rgba(231, 216, 196, 0.8)';
+        ctx.lineWidth = 0.8;
+        const bh = 8, bw = 24;
+        for (let yy = y; yy <= y + h; yy += bh) {
+            ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x + w, yy); ctx.stroke();
+        }
+        let row = 0;
+        for (let yy = y; yy < y + h; yy += bh) {
+            const off = (row % 2) ? bw / 2 : 0;
+            for (let xx = x + off; xx <= x + w; xx += bw) {
+                ctx.beginPath(); ctx.moveTo(xx, yy); ctx.lineTo(xx, yy + bh); ctx.stroke();
+            }
+            row++;
+        }
+        ctx.restore();
+    }
+
+    function drawSash(ctx, x, y, w, h) {
+        ctx.save();
+        ctx.translate(x, y);
+        roundRect(ctx, 0, 0, w, h, 1.5);
+        ctx.fillStyle = '#f4efe4';
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#3a2b22';
+        ctx.stroke();
+        ctx.fillStyle = '#aecbe0';
+        ctx.fillRect(w * 0.13, h * 0.09, w * 0.74, h * 0.82);
+        ctx.strokeStyle = '#f4efe4';
+        ctx.lineWidth = Math.max(1, w * 0.08);
+        ctx.beginPath();
+        ctx.moveTo(w / 2, h * 0.09); ctx.lineTo(w / 2, h * 0.91);
+        ctx.moveTo(w * 0.13, h / 2); ctx.lineTo(w * 0.87, h / 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawDoor(ctx, x, y, w, h) {
+        ctx.save();
+        ctx.translate(x, y);
+        const fan = h * 0.16;
+        ctx.fillStyle = '#aecbe0';
+        roundRect(ctx, 0, 0, w, fan, 1.5); ctx.fill();
+        ctx.fillStyle = '#2f6b4f';
+        roundRect(ctx, 0, fan, w, h - fan, 1.5); ctx.fill();
+        ctx.lineWidth = 1; ctx.strokeStyle = '#1e4633';
+        roundRect(ctx, 0, 0, w, h, 1.5); ctx.stroke();
+        ctx.fillStyle = '#27583f';
+        const pw = w * 0.3, ph = (h - fan) * 0.32;
+        ctx.fillRect(w * 0.12, fan + ph * 0.4, pw, ph);
+        ctx.fillRect(w * 0.58, fan + ph * 0.4, pw, ph);
+        ctx.fillRect(w * 0.12, fan + ph * 1.7, pw, ph);
+        ctx.fillRect(w * 0.58, fan + ph * 1.7, pw, ph);
+        ctx.fillStyle = '#e6c14d';
+        ctx.beginPath(); ctx.arc(w * 0.8, h * 0.55, w * 0.05, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+
+    function drawScaffold(ctx) {
+        // working platforms (planks)
+        ctx.fillStyle = '#c8a164';
+        ctx.strokeStyle = '#a9824a';
+        ctx.lineWidth = 0.8;
+        [84, 134].forEach((yy) => { ctx.fillRect(4, yy, 192, 7); ctx.strokeRect(4, yy, 192, 7); });
+        // diagonal braces
+        ctx.strokeStyle = '#b7bfc6';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(12, 138); ctx.lineTo(100, 88);
+        ctx.moveTo(100, 88); ctx.lineTo(188, 40);
+        ctx.stroke();
+        // horizontal ledgers
+        ctx.strokeStyle = '#aab2b9';
+        ctx.lineWidth = 2.4;
+        [40, 88, 138].forEach((yy) => {
+            ctx.beginPath(); ctx.moveTo(6, yy); ctx.lineTo(194, yy); ctx.stroke();
+        });
+        // standards (vertical poles) — same x on every block so towers line up
+        ctx.strokeStyle = '#9aa3ab';
+        ctx.lineWidth = 3;
+        [12, 100, 188].forEach((xx) => {
+            ctx.beginPath(); ctx.moveTo(xx, 2); ctx.lineTo(xx, 158); ctx.stroke();
+        });
+        // couplers
+        ctx.fillStyle = '#7f878e';
+        [12, 100, 188].forEach((xx) => [40, 88, 138].forEach((yy) => {
+            ctx.beginPath(); ctx.arc(xx, yy, 2.2, 0, Math.PI * 2); ctx.fill();
+        }));
+    }
+
+    function steppedGablePath(ctx) {
+        ctx.beginPath();
+        ctx.moveTo(50, 46); ctx.lineTo(50, 34); ctx.lineTo(66, 34); ctx.lineTo(66, 24);
+        ctx.lineTo(84, 24); ctx.lineTo(84, 14); ctx.lineTo(116, 14); ctx.lineTo(116, 24);
+        ctx.lineTo(134, 24); ctx.lineTo(134, 34); ctx.lineTo(150, 34); ctx.lineTo(150, 46);
+        ctx.closePath();
+    }
+
+    function roofPath(ctx) {
+        ctx.beginPath();
+        ctx.moveTo(8, 58); ctx.lineTo(52, 10); ctx.lineTo(148, 10); ctx.lineTo(192, 58);
+        ctx.closePath();
+    }
+
+    // ---- the five façade variants (Het Loo intentionally excluded) ----
+
+    function facadeBrickCourse(ctx) {
+        drawBrick(ctx, 0, 0, 200, 160);
+        ctx.fillStyle = '#8f4632'; ctx.fillRect(0, 0, 200, 10);
+        ctx.fillStyle = '#cdbfa9'; ctx.fillRect(0, 74, 200, 9);
+        ctx.fillStyle = '#7d3e2c'; ctx.fillRect(0, 150, 200, 10);
+        [22, 83, 144].forEach((x) => drawSash(ctx, x, 20, 34, 48));
+        [22, 83, 144].forEach((x) => drawSash(ctx, x, 96, 34, 48));
+    }
+
+    function facadeSteppedGable(ctx) {
+        drawBrick(ctx, 0, 46, 200, 114);
+        ctx.fillStyle = '#7d3e2c'; ctx.fillRect(0, 150, 200, 10);
+        ctx.save(); steppedGablePath(ctx); ctx.clip(); drawBrick(ctx, 0, 0, 200, 60); ctx.restore();
+        ctx.save(); steppedGablePath(ctx); ctx.lineWidth = 3; ctx.strokeStyle = '#f1ece1';
+        ctx.lineJoin = 'round'; ctx.stroke(); ctx.restore();
+        ctx.fillStyle = '#6b4a33'; ctx.fillRect(96, 2, 8, 15);
+        ctx.beginPath(); ctx.arc(100, 4, 3, 0, Math.PI * 2); ctx.fill();
+        drawSash(ctx, 84, 22, 32, 20);
+        drawSash(ctx, 34, 64, 34, 48);
+        drawSash(ctx, 132, 64, 34, 48);
+    }
+
+    function facadeGroundFloor(ctx) {
+        drawBrick(ctx, 0, 0, 200, 160);
+        ctx.fillStyle = '#8f4632'; ctx.fillRect(0, 0, 200, 10);
+        ctx.fillStyle = '#5f5a52'; ctx.fillRect(0, 150, 200, 10);
+        drawSash(ctx, 40, 22, 34, 44);
+        drawSash(ctx, 126, 22, 34, 44);
+        drawSash(ctx, 22, 74, 40, 56);
+        drawSash(ctx, 138, 74, 40, 56);
+        ctx.fillStyle = '#cdbfa9'; ctx.fillRect(74, 56, 52, 8);
+        drawDoor(ctx, 78, 62, 44, 88);
+    }
+
+    function facadeTiledRoof(ctx) {
+        drawBrick(ctx, 0, 58, 200, 102);
+        ctx.fillStyle = '#7d3e2c'; ctx.fillRect(0, 150, 200, 10);
+        roofPath(ctx);
+        ctx.fillStyle = '#d97a3c'; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = '#a85626'; ctx.lineJoin = 'round'; ctx.stroke();
+        ctx.save(); roofPath(ctx); ctx.clip();
+        ctx.strokeStyle = '#b9602c'; ctx.lineWidth = 1.4;
+        [22, 34, 46].forEach((yy) => { ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(200, yy); ctx.stroke(); });
+        ctx.restore();
+        ctx.beginPath(); ctx.moveTo(86, 30); ctx.lineTo(100, 16); ctx.lineTo(114, 30); ctx.closePath();
+        ctx.fillStyle = '#d97a3c'; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = '#a85626'; ctx.stroke();
+        drawBrick(ctx, 88, 30, 24, 20);
+        drawSash(ctx, 92, 32, 16, 18);
+        drawSash(ctx, 34, 74, 34, 48);
+        drawSash(ctx, 132, 74, 34, 48);
+    }
+
+    function facadeBellGable(ctx) {
+        drawBrick(ctx, 0, 50, 200, 110);
+        ctx.fillStyle = '#7d3e2c'; ctx.fillRect(0, 150, 200, 10);
+        ctx.beginPath();
+        ctx.moveTo(28, 50); ctx.lineTo(28, 40);
+        ctx.bezierCurveTo(28, 28, 40, 23, 58, 22);
+        ctx.bezierCurveTo(68, 11, 132, 11, 142, 22);
+        ctx.bezierCurveTo(160, 23, 172, 28, 172, 40);
+        ctx.lineTo(172, 50); ctx.closePath();
+        ctx.fillStyle = '#efe9dd'; ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = '#cdbfa9'; ctx.lineJoin = 'round'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(100, 32, 9, 0, Math.PI * 2);
+        ctx.fillStyle = '#aecbe0'; ctx.fill();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = '#cdbfa9'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(100, 9, 4, 0, Math.PI * 2); ctx.fillStyle = '#cdbfa9'; ctx.fill();
+        drawSash(ctx, 34, 64, 34, 48);
+        drawSash(ctx, 132, 64, 34, 48);
+        drawSash(ctx, 83, 96, 34, 46);
+    }
+
+    const facadeDrawers = [
+        facadeBrickCourse, facadeSteppedGable, facadeGroundFloor,
+        facadeTiledRoof, facadeBellGable,
+    ];
+
+    // Lazily pre-render each façade (with scaffolding) into an offscreen canvas.
+    let facadeCache = null;
+    function buildFacadeCache() {
+        if (facadeCache || typeof document === 'undefined') return facadeCache;
+        const scale = 2; // supersample for crisp downscaling onto small blocks
+        facadeCache = facadeDrawers.map((fn) => {
+            const c = document.createElement('canvas');
+            c.width = FACADE_W * scale;
+            c.height = FACADE_H * scale;
+            const cx = c.getContext('2d');
+            cx.scale(scale, scale);
+            fn(cx);
+            drawScaffold(cx);
+            return c;
+        });
+        return facadeCache;
+    }
+
+    // Stable per-block pseudo-random pick (so a block keeps its façade across
+    // frames instead of flickering).
+    function facadeVariant(index) {
+        let h = ((index + 1) * 374761393) >>> 0;
+        h = ((h ^ (h >>> 13)) * 1274126177) >>> 0;
+        return (h >>> 0) % facadeDrawers.length;
+    }
+
+    register({
+        id: 'apeldoorn',
+        name: 'Apeldoorn',
+        swatch: '#b15c44',
+        // colour used by the menu preview (which is plain HTML, not canvas)
+        colorFor(i) {
+            const t = ['#b15c44', '#b96149', '#a8503f', '#bd6650', '#a85436'];
+            return t[i % t.length];
+        },
+        render(ctx, rect, index, h) {
+            const cache = buildFacadeCache();
+            const v = facadeVariant(index);
+            if (cache && cache[v]) {
+                ctx.drawImage(cache[v], rect.x, rect.y, rect.w, rect.h);
+            } else {
+                h.defaultRender(ctx, rect, '#b15c44'); // no-canvas fallback
+            }
+        },
+    });
+
     register({
         id: 'spectrum',
         name: 'Spectrum',

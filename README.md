@@ -66,6 +66,19 @@ A timing game where a square block slides back and forth at the very top of the 
 
 **Customising block looks:** all rendering lives in `block-stack/js/blocks.js`. Register a new skin with `BlockSkins.register({ id, name, colorFor(index) })` for a recoloured block, or supply a `render(ctx, rect, index, helpers)` function for a fully custom look (patterns, emoji, images). New skins appear automatically in the menu's style picker.
 
+### 🚛 Truck Jam
+A "parking slide" puzzle (the Rush Hour family) themed with cab-over European lorries — slide the trucks out of the way to clear a lane so your red lorry can roll out the depot's exit gate.
+
+**Features:**
+- 8 hand-tuned yards, every one verified solvable by a built-in BFS solver
+- Difficulty graded by optimal move count, from a 2-move warm-up to a 16-move deadlock
+- Trucks slide only along their own length — drag with a finger or the mouse
+- Three-star scoring that rewards matching each yard's optimal "par"
+- Stuck? The same solver powers a hint that shows your next move
+- Tracks your best move count per yard locally and remembers cleared yards
+
+**Play:** [Truck Jam](truck-jam/index.html)
+
 ### Workflow Details
 
 The `.github/workflows/deploy-pages.yml` workflow:

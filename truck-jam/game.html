@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Truck Jam - Clear the Yard</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/core/engine.js"></script>
+    <script src="js/core/levels.js"></script>
+    <script src="js/core/storage.js"></script>
+    <style>
+        .game-container { max-width: 560px; }
+
+        /* ---- top bar: level name + stats ---- */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .level-title { text-align: left; }
+        .level-title .lname { font-size: 1.25em; font-weight: 800; color: var(--text-primary); }
+        .level-title .lblurb { font-size: 0.85em; color: var(--text-secondary); margin: 0; }
+
+        .scorebar {
+            display: flex;
+            gap: 8px;
+        }
+        .pill {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 12px;
+            padding: 6px 12px;
+            text-align: center;
+            min-width: 58px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .pill .plabel { font-size: 0.68em; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+        .pill .pval { font-size: 1.3em; font-weight: 800; color: var(--text-primary); line-height: 1.1; }
+
+        /* ---- the yard (board) ---- */
+        .yard-wrap {
+            position: relative;
+            margin: 4px auto 8px;
+            /* leave room on the right for the exit gate */
+            padding-right: 26px;
+        }
+        .yard {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background:
+                repeating-linear-gradient(0deg,  rgba(0,0,0,0.05) 0 1px, transparent 1px calc(100%/6)),
+                repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 1px, transparent 1px calc(100%/6)),
+                linear-gradient(160deg, #5a5f66 0%, #494e54 100%);
+            border-radius: 14px;
+            box-shadow: inset 0 0 0 3px rgba(0,0,0,0.18), 0 10px 28px rgba(0,0,0,0.22);
+            touch-action: none;
+            overflow: visible;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* faint parking-bay dashes down each column */
+        .yard::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 14px;
+            background-image: repeating-linear-gradient(90deg,
+                transparent 0 calc(100%/6 - 2px),
+                rgba(255,255,255,0.12) calc(100%/6 - 2px) calc(100%/6));
+            pointer-events: none;
+        }
+
+        /* the exit gate notch on the right edge, aligned to the exit row */
+        .exit-gate {
+            position: absolute;
+            right: -4px;
+            width: 30px;
+            height: calc(100% / 6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffe08a;
+            font-size: 1.4em;
+            font-weight: 800;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+            animation: arrowPulse 1.2s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes arrowPulse {
+            0%,100% { transform: translateX(0); opacity: 0.75; }
+            50% { transform: translateX(4px); opacity: 1; }
+        }
+
+        /* ---- vehicles ---- */
+        .truck {
+            position: absolute;
+            box-sizing: border-box;
+            padding: 5px;
+            cursor: grab;
+            touch-action: none;
+            transition: left 0.18s ease, top 0.18s ease;
+            z-index: 2;
+        }
+        .truck.dragging { cursor: grabbing; transition: none; z-index: 5; }
+        .truck.target { z-index: 3; }
+
+        .body {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 9px;
+            background: var(--truck-color, #888);
+            box-shadow:
+                inset 0 0 0 1px rgba(0,0,0,0.25),
+                inset 0 6px 10px rgba(255,255,255,0.18),
+                inset 0 -8px 12px rgba(0,0,0,0.22),
+                0 3px 6px rgba(0,0,0,0.35);
+            overflow: hidden;
+        }
+        /* trailer ribs / curtain-side lines for a European tilt look */
+        .body.ribs.h::after,
+        .body.ribs.v::after {
+            content: "";
+            position: absolute;
+            inset: 6px;
+            border-radius: 4px;
+            opacity: 0.5;
+        }
+        .body.ribs.h::after {
+            background: repeating-linear-gradient(90deg, transparent 0 7px, rgba(0,0,0,0.16) 7px 9px);
+        }
+        .body.ribs.v::after {
+            background: repeating-linear-gradient(0deg, transparent 0 7px, rgba(0,0,0,0.16) 7px 9px);
+        }
+        /* tanker: a single cylinder highlight instead of ribs */
+        .body.tank::after {
+            content: "";
+            position: absolute;
+            inset: 5px;
+            border-radius: 999px;
+            background: linear-gradient(var(--tank-angle, 90deg), rgba(255,255,255,0.35), rgba(255,255,255,0) 40%);
+            opacity: 0.8;
+        }
+
+        /* the cab sits at the "front" end with a windscreen */
+        .cab {
+            position: absolute;
+            background: rgba(0,0,0,0.22);
+        }
+        .cab::after { /* windscreen */
+            content: "";
+            position: absolute;
+            background: linear-gradient(180deg, #cfe8ff, #8fb8da);
+            border-radius: 2px;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2);
+        }
+        /* horizontal cab at right end */
+        .h .cab { top: 4px; bottom: 4px; right: 3px; width: 26%; border-radius: 7px; }
+        .h .cab::after { top: 22%; bottom: 22%; right: 18%; width: 34%; }
+        /* horizontal cab at left end (used when truck "faces" left) */
+        .h.faceL .cab { right: auto; left: 3px; }
+        .h.faceL .cab::after { right: auto; left: 18%; }
+        /* vertical cab at bottom end */
+        .v .cab { left: 4px; right: 4px; bottom: 3px; height: 26%; border-radius: 7px; }
+        .v .cab::after { left: 22%; right: 22%; bottom: 18%; height: 34%; }
+        .v.faceU .cab { bottom: auto; top: 3px; }
+        .v.faceU .cab::after { bottom: auto; top: 18%; }
+
+        /* target lorry: bright outline + soft glow + GO badge */
+        .truck.target .body {
+            box-shadow:
+                inset 0 0 0 2px rgba(255,255,255,0.55),
+                inset 0 6px 10px rgba(255,255,255,0.25),
+                inset 0 -8px 12px rgba(0,0,0,0.25),
+                0 0 0 2px rgba(255,255,255,0.35),
+                0 4px 12px rgba(226,59,46,0.55);
+        }
+        .go-badge {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            color: #fff;
+            font-weight: 900;
+            font-size: 0.8em;
+            letter-spacing: 0.06em;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+
+        /* highlight pulse used by the hint */
+        .truck.hint .body {
+            animation: hintFlash 0.6s ease-in-out 3;
+        }
+        @keyframes hintFlash {
+            0%,100% { filter: brightness(1); }
+            50% { filter: brightness(1.6); }
+        }
+
+        /* driving off the board on win */
+        .truck.escape { transition: left 0.7s cubic-bezier(.5,0,.9,.4), opacity 0.7s; }
+
+        .controls { margin: 12px 0 4px; }
+        .btn-sm { padding: 11px 18px; font-size: 0.98em; }
+
+        .hint-note {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            min-height: 1.2em;
+            margin-top: 2px;
+        }
+
+        /* win modal extras */
+        .star-row { font-size: 2em; margin: 6px 0 14px; letter-spacing: 6px; }
+        .modal-stats { color: var(--text-secondary); margin-bottom: 18px; }
+        .modal-stats b { color: var(--text-primary); }
+
+        @media (max-width: 768px) {
+            .level-title .lname { font-size: 1.1em; }
+            .pill { min-width: 50px; padding: 5px 9px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container game-container">
+        <div class="topbar">
+            <div class="level-title">
+                <div class="lname" id="levelName">Truck Jam</div>
+                <p class="lblurb" id="levelBlurb"></p>
+            </div>
+            <div class="scorebar">
+                <div class="pill"><div class="plabel">Moves</div><div class="pval" id="moveCount">0</div></div>
+                <div class="pill"><div class="plabel">Par</div><div class="pval" id="parVal">–</div></div>
+                <div class="pill"><div class="plabel">Best</div><div class="pval" id="bestVal">–</div></div>
+            </div>
+        </div>
+
+        <div class="yard-wrap">
+            <div class="yard" id="yard"></div>
+            <div class="exit-gate" id="exitGate">➜</div>
+        </div>
+
+        <div class="hint-note" id="hintNote">Drag your red lorry to the exit gate. Trucks only slide along their length.</div>
+
+        <div class="controls">
+            <button class="btn btn-secondary btn-sm" id="prevBtn">‹ Prev</button>
+            <button class="btn btn-secondary btn-sm" id="resetBtn">↺ Reset</button>
+            <button class="btn btn-secondary btn-sm" id="hintBtn">💡 Hint</button>
+            <button class="btn btn-secondary btn-sm" id="nextBtn">Next ›</button>
+        </div>
+
+        <div class="controls">
+            <a href="index.html" class="btn btn-sm">☰ Levels</a>
+        </div>
+    </div>
+
+    <!-- Win modal -->
+    <div class="modal" id="winModal">
+        <div class="modal-content">
+            <div class="win-message" id="winTitle">Cleared the yard! 🚛</div>
+            <div class="star-row" id="starRow">⭐⭐⭐</div>
+            <div class="modal-stats" id="winStats"></div>
+            <button class="btn btn-primary" id="nextLevelBtn">Next Yard →</button>
+            <button class="btn btn-secondary" id="replayBtn">Replay</button>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+        const Levels = window.TruckJamLevels;
+        const Engine = window.TruckJam;
+        const Store = window.TruckJamStore;
+
+        // --- which level are we on? (?level=ID or index, else first unsolved) ---
+        const params = new URLSearchParams(location.search);
+        function resolveStartIndex() {
+            const q = params.get('level');
+            if (q !== null) {
+                const byId = Levels.findIndex(l => l.id === q);
+                if (byId >= 0) return byId;
+                const n = parseInt(q, 10);
+                if (!isNaN(n) && n >= 0 && n < Levels.length) return n;
+            }
+            return 0;
+        }
+
+        let levelIndex = resolveStartIndex();
+        let board = null;      // working board (Engine.createBoard clone)
+        let levelDef = null;
+        let moves = 0;
+        let solved = false;
+        const yard = document.getElementById('yard');
+        const els = new Map(); // vehicle id -> element
+
+        const CELLS = 6;
+        const pct = (n) => (n / CELLS * 100) + '%';
+
+        // ---------- rendering ----------
+        function buildVehicleEl(v) {
+            const el = document.createElement('div');
+            el.className = 'truck' + (v.isTarget ? ' target' : '');
+            el.dataset.id = v.id;
+
+            const body = document.createElement('div');
+            const orient = v.dir; // 'h' | 'v'
+            let bodyClass = 'body ' + orient;
+            if (v.kind === 'tanker') bodyClass += ' tank';
+            else bodyClass += ' ribs';
+            body.className = bodyClass;
+            body.style.setProperty('--truck-color', v.color);
+            if (v.kind === 'tanker') {
+                body.style.setProperty('--tank-angle', orient === 'h' ? '180deg' : '90deg');
+            }
+
+            const cab = document.createElement('div');
+            cab.className = 'cab';
+            body.appendChild(cab);
+
+            if (v.isTarget) {
+                const badge = document.createElement('div');
+                badge.className = 'go-badge';
+                badge.textContent = 'GO';
+                body.appendChild(badge);
+            }
+            el.appendChild(body);
+            // face: target + horizontals point right toward the exit; verticals point down.
+            // (purely cosmetic cab placement)
+            return el;
+        }
+
+        function placeEl(el, v) {
+            el.style.left = pct(v.x);
+            el.style.top = pct(v.y);
+            el.style.width = pct(v.dir === 'h' ? v.len : 1);
+            el.style.height = pct(v.dir === 'v' ? v.len : 1);
+        }
+
+        function render() {
+            yard.innerHTML = '';
+            els.clear();
+            for (const v of board.vehicles) {
+                const el = buildVehicleEl(v);
+                placeEl(el, v);
+                attachDrag(el, v);
+                yard.appendChild(el);
+                els.set(v.id, el);
+            }
+            // position exit gate on the exit row
+            document.getElementById('exitGate').style.top = pct(board.exitRow);
+        }
+
+        // ---------- drag handling ----------
+        let drag = null;
+        function attachDrag(el, v) {
+            el.addEventListener('pointerdown', (e) => {
+                if (solved) return;
+                e.preventDefault();
+                const rect = yard.getBoundingClientRect();
+                const cellPx = rect.width / CELLS;
+                const range = Engine.slideRange(board, v); // {min,max} in cells
+                drag = {
+                    v, el, cellPx,
+                    horizontal: v.dir === 'h',
+                    startPointer: v.dir === 'h' ? e.clientX : e.clientY,
+                    startPos: v.dir === 'h' ? v.x : v.y,
+                    min: range.min, max: range.max,
+                    livePos: v.dir === 'h' ? v.x : v.y
+                };
+                el.classList.add('dragging');
+                el.setPointerCapture(e.pointerId);
+            });
+            el.addEventListener('pointermove', (e) => {
+                if (!drag || drag.el !== el) return;
+                const pointer = drag.horizontal ? e.clientX : e.clientY;
+                const deltaCells = (pointer - drag.startPointer) / drag.cellPx;
+                let pos = drag.startPos + deltaCells;
+                pos = Math.max(drag.min, Math.min(drag.max, pos));
+                drag.livePos = pos;
+                if (drag.horizontal) el.style.left = pct(pos);
+                else el.style.top = pct(pos);
+            });
+            const finish = (e) => {
+                if (!drag || drag.el !== el) return;
+                el.classList.remove('dragging');
+                try { el.releasePointerCapture(e.pointerId); } catch (_) {}
+                const snapped = Math.round(drag.livePos);
+                const final = Math.max(drag.min, Math.min(drag.max, snapped));
+                const changed = final !== drag.startPos;
+                if (drag.horizontal) drag.v.x = final; else drag.v.y = final;
+                placeEl(el, drag.v);
+                if (changed) {
+                    moves++;
+                    updateHud();
+                    clearHint();
+                    checkWin();
+                }
+                drag = null;
+            };
+            el.addEventListener('pointerup', finish);
+            el.addEventListener('pointercancel', finish);
+        }
+
+        // ---------- win / scoring ----------
+        function starsFor(used, par) {
+            if (used <= par) return 3;
+            if (used <= Math.ceil(par * 1.5)) return 2;
+            return 1;
+        }
+
+        function checkWin() {
+            if (!Engine.isSolved(board) || solved) return;
+            solved = true;
+            // animate the target driving out through the gate
+            const t = board.vehicles.find(v => v.isTarget);
+            const el = els.get(t.id);
+            el.classList.add('escape');
+            requestAnimationFrame(() => { el.style.left = '120%'; el.style.opacity = '0'; });
+            const isBest = Store.recordWin(levelDef.id, moves);
+            setTimeout(() => showWin(isBest), 620);
+        }
+
+        function showWin(isBest) {
+            const stars = starsFor(moves, levelDef.par);
+            document.getElementById('starRow').textContent =
+                '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+            const bestTxt = isBest ? ' <b>(new best!)</b>' : '';
+            document.getElementById('winStats').innerHTML =
+                'Cleared in <b>' + moves + '</b> move' + (moves === 1 ? '' : 's') +
+                ' &middot; par <b>' + levelDef.par + '</b>' + bestTxt;
+            const last = levelIndex >= Levels.length - 1;
+            const nextBtn = document.getElementById('nextLevelBtn');
+            nextBtn.textContent = last ? 'Back to Levels' : 'Next Yard →';
+            document.getElementById('winModal').classList.add('active');
+        }
+
+        // ---------- hint ----------
+        let hintTimer = null;
+        function clearHint() {
+            els.forEach(el => el.classList.remove('hint'));
+            document.getElementById('hintNote').textContent =
+                'Drag your red lorry to the exit gate. Trucks only slide along their length.';
+        }
+        function showHint() {
+            if (solved) return;
+            // Build a level snapshot from the current board for the solver.
+            const snapshot = {
+                width: board.width, height: board.height, exitRow: board.exitRow,
+                vehicles: board.vehicles.map(v => ({ ...v }))
+            };
+            const res = Engine.solve(snapshot, 200000);
+            const note = document.getElementById('hintNote');
+            if (!res.solvable || !res.moves || !res.moves.length) {
+                note.textContent = res.solvable ? 'Already solved!' : 'No solution from here — try Reset.';
+                return;
+            }
+            const step = res.moves[0];
+            const el = els.get(step.id);
+            els.forEach(e => e.classList.remove('hint'));
+            if (el) {
+                el.classList.add('hint');
+                clearTimeout(hintTimer);
+                hintTimer = setTimeout(() => el.classList.remove('hint'), 2000);
+            }
+            const dirWord = { left: 'left', right: 'right', up: 'up', down: 'down' }[step.dir];
+            const who = step.id === 'target' ? 'your lorry' : 'the highlighted truck';
+            note.textContent = 'Try sliding ' + who + ' ' + dirWord + '.';
+        }
+
+        // ---------- hud + level loading ----------
+        function updateHud() {
+            document.getElementById('moveCount').textContent = moves;
+        }
+        function loadLevel(idx) {
+            levelIndex = (idx + Levels.length) % Levels.length;
+            levelDef = Levels[levelIndex];
+            board = Engine.createBoard(levelDef);
+            moves = 0;
+            solved = false;
+            document.getElementById('levelName').textContent =
+                (levelIndex + 1) + '. ' + levelDef.name;
+            document.getElementById('levelBlurb').textContent = levelDef.blurb || '';
+            document.getElementById('parVal').textContent = levelDef.par;
+            const best = Store.getBest(levelDef.id);
+            document.getElementById('bestVal').textContent = best === null ? '–' : best;
+            updateHud();
+            clearHint();
+            document.getElementById('winModal').classList.remove('active');
+            // keep URL in sync so refresh / share lands on the same yard
+            history.replaceState(null, '', '?level=' + levelDef.id);
+            render();
+            // disable prev/next at the ends
+            document.getElementById('prevBtn').disabled = levelIndex === 0;
+            document.getElementById('nextBtn').disabled = levelIndex === Levels.length - 1;
+        }
+
+        // ---------- buttons ----------
+        document.getElementById('resetBtn').addEventListener('click', () => loadLevel(levelIndex));
+        document.getElementById('prevBtn').addEventListener('click', () => { if (levelIndex > 0) loadLevel(levelIndex - 1); });
+        document.getElementById('nextBtn').addEventListener('click', () => { if (levelIndex < Levels.length - 1) loadLevel(levelIndex + 1); });
+        document.getElementById('hintBtn').addEventListener('click', showHint);
+        document.getElementById('replayBtn').addEventListener('click', () => loadLevel(levelIndex));
+        document.getElementById('nextLevelBtn').addEventListener('click', () => {
+            if (levelIndex >= Levels.length - 1) location.href = 'index.html';
+            else loadLevel(levelIndex + 1);
+        });
+
+        loadLevel(levelIndex);
+    })();
+    </script>
+</body>
+</html>

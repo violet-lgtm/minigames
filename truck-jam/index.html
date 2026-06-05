@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Truck Jam - European Lorry Yard Puzzle</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/core/engine.js"></script>
+    <script src="js/core/levels.js"></script>
+    <script src="js/core/storage.js"></script>
+    <style>
+        .menu-container { max-width: 620px; text-align: center; }
+
+        .lead { max-width: 520px; margin: 0 auto 18px; }
+
+        .play-row { margin: 8px 0 26px; }
+
+        /* mini animated preview of a jammed yard */
+        .preview-cabinet {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 18px;
+            padding: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+            max-width: 260px;
+            margin: 8px auto 24px;
+        }
+        .mini-yard {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 12px;
+            background:
+                repeating-linear-gradient(90deg, transparent 0 calc(100%/6 - 2px), rgba(255,255,255,0.10) calc(100%/6 - 2px) calc(100%/6)),
+                linear-gradient(160deg, #5a5f66, #494e54);
+            box-shadow: inset 0 0 0 3px rgba(0,0,0,0.18);
+            overflow: hidden;
+        }
+        .mini-truck { position: absolute; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), inset 0 4px 6px rgba(255,255,255,0.15); }
+        .mini-truck.t { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.5), 0 0 6px rgba(226,59,46,0.6); animation: nudge 2.4s ease-in-out infinite; }
+        @keyframes nudge { 0%,70%,100% { transform: translateX(0);} 82% { transform: translateX(14%);} }
+
+        /* level grid */
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin: 10px auto 8px;
+            max-width: 560px;
+        }
+        .level-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 14px;
+            padding: 14px 12px;
+            text-decoration: none;
+            color: inherit;
+            text-align: left;
+            transition: transform 0.15s, box-shadow 0.2s, border-color 0.15s;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            display: block;
+        }
+        .level-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.14); border-color: var(--accent); }
+        .level-card .num { font-size: 0.75em; color: var(--text-secondary); font-weight: 700; }
+        .level-card .nm { font-size: 1.05em; font-weight: 800; margin: 2px 0 6px; color: var(--text-primary); }
+        .level-card .meta { font-size: 0.8em; color: var(--text-secondary); display: flex; justify-content: space-between; }
+        .level-card .stars { letter-spacing: 1px; }
+        .level-card.cleared { border-left: 4px solid var(--good-color); }
+
+        .feature-list { text-align: left; margin: 24px auto 6px; max-width: 520px; list-style: none; }
+        .feature-list li { color: var(--text-secondary); margin: 10px 0; font-size: 1.0em; padding-left: 26px; position: relative; }
+        .feature-list li::before { content: "🚛"; position: absolute; left: 0; }
+
+        .progress-note { color: var(--text-secondary); font-size: 0.9em; margin: 6px 0 0; }
+    </style>
+</head>
+<body>
+    <div class="container menu-container">
+        <header>
+            <h1>🚛 Truck Jam</h1>
+            <p class="lead">The depot is jammed with European lorries. Slide the trucks out of the way — each one only rolls along its own length — and clear a lane so your red lorry can reach the exit gate.</p>
+        </header>
+
+        <div class="preview-cabinet">
+            <div class="mini-yard" id="miniYard"></div>
+        </div>
+
+        <div class="play-row">
+            <a href="game.html" class="btn btn-primary menu-btn" id="playBtn">🎮 Play</a>
+        </div>
+
+        <h2>Choose a yard</h2>
+        <div class="level-grid" id="levelGrid"></div>
+        <p class="progress-note" id="progressNote"></p>
+
+        <ul class="feature-list">
+            <li>Classic slide-to-clear puzzle, themed with cab-over European lorries</li>
+            <li>8 yards, each solver-verified, graded from 2 up to 16 moves</li>
+            <li>Drag with a finger or mouse — trucks slide only along their length</li>
+            <li>Earn up to three stars by matching the optimal "par" move count</li>
+            <li>Stuck? A built-in solver gives you the next move as a hint</li>
+            <li>Tracks your best move count per yard, locally on your device</li>
+        </ul>
+    </div>
+
+    <script>
+    (function () {
+        const Levels = window.TruckJamLevels;
+        const Store = window.TruckJamStore;
+
+        function starsFor(used, par) {
+            if (used <= par) return 3;
+            if (used <= Math.ceil(par * 1.5)) return 2;
+            return 1;
+        }
+
+        // ----- level cards -----
+        const grid = document.getElementById('levelGrid');
+        Levels.forEach((lvl, i) => {
+            const a = document.createElement('a');
+            const cleared = Store.isCleared(lvl.id);
+            const best = Store.getBest(lvl.id);
+            a.href = 'game.html?level=' + lvl.id;
+            a.className = 'level-card' + (cleared ? ' cleared' : '');
+            let starsHtml = '';
+            if (cleared && best !== null) {
+                const s = starsFor(best, lvl.par);
+                starsHtml = '⭐'.repeat(s) + '☆'.repeat(3 - s);
+            } else {
+                starsHtml = '☆☆☆';
+            }
+            a.innerHTML =
+                '<div class="num">Yard ' + (i + 1) + '</div>' +
+                '<div class="nm">' + lvl.name + '</div>' +
+                '<div class="meta"><span class="stars">' + starsHtml + '</span>' +
+                '<span>par ' + lvl.par + (best !== null ? ' &middot; best ' + best : '') + '</span></div>';
+            grid.appendChild(a);
+        });
+
+        document.getElementById('progressNote').textContent =
+            'Cleared ' + Store.clearedCount() + ' of ' + Levels.length + ' yards.';
+
+        // ----- mini animated preview using the first level's layout -----
+        const mini = document.getElementById('miniYard');
+        const demo = Levels[Math.min(2, Levels.length - 1)];
+        demo.vehicles.forEach(v => {
+            const d = document.createElement('div');
+            d.className = 'mini-truck' + (v.isTarget ? ' t' : '');
+            d.style.left = (v.x / 6 * 100) + '%';
+            d.style.top = (v.y / 6 * 100) + '%';
+            d.style.width = ((v.dir === 'h' ? v.len : 1) / 6 * 100) + '%';
+            d.style.height = ((v.dir === 'v' ? v.len : 1) / 6 * 100) + '%';
+            d.style.background = v.color;
+            d.style.transform = '';
+            // inset for a small gap
+            d.style.boxSizing = 'border-box';
+            d.style.border = '3px solid transparent';
+            d.style.backgroundClip = 'padding-box';
+            mini.appendChild(d);
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -266,7 +266,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get('mode') || 'builtin';
         const levelParam = urlParams.get('level');
-        const testLevel = Storage.getTestLevel();
+        const standaloneLevel = window.STANDALONE_LEVEL || null;
+        const testLevel = standaloneLevel ? null : Storage.getTestLevel();
 
         let levels = [];
         let currentLevelIndex = -1;
@@ -274,7 +275,13 @@
         let engine = null;
         let pegSize = 46;
 
-        if (levelParam) {
+        if (standaloneLevel) {
+            // This page was exported as a self-contained standalone level.
+            levels = [standaloneLevel];
+            currentLevelIndex = 0;
+            document.getElementById('pageTitle').textContent = standaloneLevel.name || 'Mastermind';
+            startGame(standaloneLevel);
+        } else if (levelParam) {
             try {
                 const level = JSON.parse(decodeURIComponent(escape(atob(levelParam))));
                 levels = [level];
@@ -371,7 +378,7 @@
             const len = level.config.codeLength;
             pegSize = len <= 4 ? 48 : len <= 6 ? 42 : 36;
 
-            document.getElementById('shareBtn').style.display = (levelParam || mode === 'custom') ? 'inline-block' : 'none';
+            document.getElementById('shareBtn').style.display = ((levelParam || mode === 'custom') && !standaloneLevel) ? 'inline-block' : 'none';
             document.getElementById('backBtn').style.display = (levels.length > 1) ? 'inline-block' : 'none';
 
             engine = new MastermindEngine(level);

@@ -182,6 +182,10 @@
         }
     ];
 
+    // Exposed so custom levels (editor / shared links / standalone pages) get
+    // the same livery treatment as the built-in catalogue.
+    window.TruckJamDecorate = decorate;
+
     window.TruckJamLevels = RAW.map(lvl => ({
         id: lvl.id,
         name: lvl.name,

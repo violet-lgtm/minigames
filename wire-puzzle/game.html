@@ -211,7 +211,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get('mode') || 'builtin';
         const levelParam = urlParams.get('level');
-        const testLevel = Storage.getTestLevel();
+        const standaloneLevel = window.STANDALONE_LEVEL || null;
+        const testLevel = standaloneLevel ? null : Storage.getTestLevel();
 
         let levels = [];
         let currentLevelIndex = -1;
@@ -220,7 +221,13 @@
         let renderer = null;
 
         // Initialize
-        if (levelParam) {
+        if (standaloneLevel) {
+            // This page was exported as a self-contained standalone level.
+            levels = [standaloneLevel];
+            currentLevelIndex = 0;
+            document.getElementById('pageTitle').textContent = standaloneLevel.name || 'Wire Puzzle';
+            startGame(standaloneLevel);
+        } else if (levelParam) {
             // Load level from URL parameter
             try {
                 const levelJson = atob(levelParam);
@@ -354,7 +361,7 @@
 
             // Show share button for shared levels and custom levels
             const shareBtn = document.getElementById('shareLevelBtn');
-            if (levelParam || mode === 'custom') {
+            if ((levelParam || mode === 'custom') && !standaloneLevel) {
                 shareBtn.style.display = 'inline-block';
             } else {
                 shareBtn.style.display = 'none';

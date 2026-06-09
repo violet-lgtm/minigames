@@ -2,6 +2,23 @@
 
 A collection of interactive browser-based mini games for stqry integration.
 
+## 🧩 Custom Levels & Standalone Pages
+
+Every game has a level creator, and every created level can be exported as a
+**standalone web page**: a single self-contained HTML file (game + level baked
+in) that can be hosted anywhere on its own — independent of this site.
+
+- **Wire Puzzle / Mastermind** — full level editors (`editor.html`)
+- **Truck Jam** — visual yard editor with a built-in solvability check (`editor.html`)
+- **Block Stacker** — challenge creator: goal height, speeds, skin, win message (`editor.html`)
+- **Reaction Slots** — round designer: your own symbols, reels and speeds (`editor.html`)
+- **Paper Puzzle** — custom puzzle creator from any image (`custom.html`)
+
+Each creator offers **🔗 Copy Share Link** (plays on this site) and
+**📦 Download Standalone Page** (a single `.html` file you can upload to any
+web server or CMS as its own page). The export bundles the game's CSS and
+JavaScript and the level data into one file, so it needs no other assets.
+
 ## 🌐 Live Demo
 
 Once GitHub Pages is enabled, the games will be available at:
@@ -46,6 +63,7 @@ A reaction-time test disguised as a slot machine — stop each of three spinning
 - Tracks your best score locally
 - Available in English, Dutch and German with an in-game language picker
 - Play with a tap, click, or the spacebar
+- Round designer: choose your own symbols, goal, reel count and speeds, then share a link or export a standalone page
 
 **Play:** [Reaction Slots](slot-reaction/index.html)
 
@@ -61,6 +79,7 @@ A timing game where a square block slides back and forth at the very top of the 
 - Missed blocks tumble past the tower with a little physics flourish
 - Swappable block styles (Spectrum, Sunset, Ocean, Slate, Candy) with a simple registry for adding your own
 - Tracks your best height locally
+- Challenge creator: set a goal height, speeds, block style and win message, then share a link or export a standalone page
 
 **Play:** [Block Stacker](block-stack/index.html)
 
@@ -76,6 +95,7 @@ A "parking slide" puzzle (the Rush Hour family) themed with cab-over European lo
 - Three-star scoring that rewards matching each yard's optimal "par"
 - Stuck? The same solver powers a hint that shows your next move
 - Tracks your best move count per yard locally and remembers cleared yards
+- Yard editor: lay out your own jam, with the solver verifying it and setting par; share a link or export a standalone page
 
 **Play:** [Truck Jam](truck-jam/index.html)
 
@@ -96,6 +116,8 @@ minigames/
 ├── .github/
 │   └── workflows/
 │       └── deploy-pages.yml  # GitHub Pages deployment
+├── shared/
+│   └── standalone.js         # Standalone-page exporter used by all level editors
 └── wire-puzzle/              # Wire Puzzle game
     ├── index.html            # Game menu
     ├── game.html            # Game player

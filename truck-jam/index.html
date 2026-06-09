@@ -152,7 +152,7 @@
             d.style.top = (v.y / 6 * 100) + '%';
             d.style.width = ((v.dir === 'h' ? v.len : 1) / 6 * 100) + '%';
             d.style.height = ((v.dir === 'v' ? v.len : 1) / 6 * 100) + '%';
-            d.style.background = v.color;
+            d.style.background = 'linear-gradient(155deg, rgba(255,255,255,0.30), rgba(0,0,0,0) 45%, rgba(0,0,0,0.26)), ' + v.color;
             d.style.transform = '';
             // inset for a small gap
             d.style.boxSizing = 'border-box';

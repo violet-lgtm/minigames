@@ -113,63 +113,113 @@
             position: relative;
             width: 100%;
             height: 100%;
-            border-radius: 9px;
-            background: var(--truck-color, #888);
+            border-radius: 10px;
+            background:
+                linear-gradient(var(--sheen, 180deg),
+                    rgba(255,255,255,0.30) 0%,
+                    rgba(255,255,255,0.06) 16%,
+                    rgba(0,0,0,0) 48%,
+                    rgba(0,0,0,0.14) 82%,
+                    rgba(0,0,0,0.32) 100%),
+                var(--truck-color, #888);
             box-shadow:
-                inset 0 0 0 1px rgba(0,0,0,0.25),
-                inset 0 6px 10px rgba(255,255,255,0.18),
-                inset 0 -8px 12px rgba(0,0,0,0.22),
-                0 3px 6px rgba(0,0,0,0.35);
+                inset 0 0 0 1.5px rgba(0,0,0,0.30),
+                inset 0 0 0 2.5px rgba(255,255,255,0.10),
+                0 4px 8px rgba(0,0,0,0.40);
             overflow: hidden;
+            z-index: 1;
         }
-        /* trailer ribs / curtain-side lines for a European tilt look */
+        .body.h { --sheen: 180deg; }
+        .body.v { --sheen: 90deg; }
+
+        /* tyres peeking out along the two long edges (top-down view) */
+        .wheels { position: absolute; inset: 2px; pointer-events: none; z-index: 0; }
+        .wheels::before, .wheels::after {
+            content: "";
+            position: absolute;
+            background: repeating-linear-gradient(var(--tyre, 90deg),
+                #161616 0 8px, transparent 8px 20px);
+            border-radius: 3px;
+        }
+        .wheels.h::before, .wheels.h::after { --tyre: 90deg; left: 15%; right: 9%; height: 6px; }
+        .wheels.h::before { top: 1px; }
+        .wheels.h::after  { bottom: 1px; }
+        .wheels.v::before, .wheels.v::after { --tyre: 0deg; top: 15%; bottom: 9%; width: 6px; }
+        .wheels.v::before { left: 1px; }
+        .wheels.v::after  { right: 1px; }
+        /* trailer ribs / curtain-side straps for a European tilt look */
         .body.ribs.h::after,
         .body.ribs.v::after {
             content: "";
             position: absolute;
-            inset: 6px;
-            border-radius: 4px;
-            opacity: 0.5;
+            inset: 5px;
+            border-radius: 5px;
+            opacity: 0.65;
         }
         .body.ribs.h::after {
-            background: repeating-linear-gradient(90deg, transparent 0 7px, rgba(0,0,0,0.16) 7px 9px);
+            background: repeating-linear-gradient(90deg,
+                rgba(255,255,255,0.07) 0 1px,
+                transparent 1px 9px,
+                rgba(0,0,0,0.20) 9px 10px,
+                transparent 10px 11px);
         }
         .body.ribs.v::after {
-            background: repeating-linear-gradient(0deg, transparent 0 7px, rgba(0,0,0,0.16) 7px 9px);
+            background: repeating-linear-gradient(0deg,
+                rgba(255,255,255,0.07) 0 1px,
+                transparent 1px 9px,
+                rgba(0,0,0,0.20) 9px 10px,
+                transparent 10px 11px);
         }
-        /* tanker: a single cylinder highlight instead of ribs */
+        /* tanker: a shaded cylinder with end caps instead of ribs */
         .body.tank::after {
             content: "";
             position: absolute;
-            inset: 5px;
+            inset: 4px;
             border-radius: 999px;
-            background: linear-gradient(var(--tank-angle, 90deg), rgba(255,255,255,0.35), rgba(255,255,255,0) 40%);
-            opacity: 0.8;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.22);
+        }
+        .body.tank.h::after {
+            background: linear-gradient(180deg,
+                rgba(0,0,0,0.20) 0%, rgba(255,255,255,0.42) 32%,
+                rgba(255,255,255,0.10) 52%, rgba(0,0,0,0.24) 100%);
+        }
+        .body.tank.v::after {
+            background: linear-gradient(90deg,
+                rgba(0,0,0,0.20) 0%, rgba(255,255,255,0.42) 32%,
+                rgba(255,255,255,0.10) 52%, rgba(0,0,0,0.24) 100%);
         }
 
-        /* the cab sits at the "front" end with a windscreen */
+        /* the cab sits at the "front" end with a windscreen + headlights */
         .cab {
             position: absolute;
-            background: rgba(0,0,0,0.22);
+            background: linear-gradient(var(--sheen, 180deg),
+                rgba(255,255,255,0.20), rgba(0,0,0,0.30));
+            box-shadow:
+                inset 0 0 0 1px rgba(0,0,0,0.28),
+                inset 0 0 6px rgba(0,0,0,0.25);
         }
         .cab::after { /* windscreen */
             content: "";
             position: absolute;
-            background: linear-gradient(180deg, #cfe8ff, #8fb8da);
+            background: linear-gradient(180deg, #dcefff, #7ba9cf);
             border-radius: 2px;
-            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), inset 0 2px 2px rgba(255,255,255,0.5);
         }
-        /* horizontal cab at right end */
-        .h .cab { top: 4px; bottom: 4px; right: 3px; width: 26%; border-radius: 7px; }
-        .h .cab::after { top: 22%; bottom: 22%; right: 18%; width: 34%; }
-        /* horizontal cab at left end (used when truck "faces" left) */
-        .h.faceL .cab { right: auto; left: 3px; }
-        .h.faceL .cab::after { right: auto; left: 18%; }
-        /* vertical cab at bottom end */
-        .v .cab { left: 4px; right: 4px; bottom: 3px; height: 26%; border-radius: 7px; }
-        .v .cab::after { left: 22%; right: 22%; bottom: 18%; height: 34%; }
-        .v.faceU .cab { bottom: auto; top: 3px; }
-        .v.faceU .cab::after { bottom: auto; top: 18%; }
+        .cab::before { /* headlights at the very front edge */
+            content: "";
+            position: absolute;
+            background: #fff3c4;
+            box-shadow: 0 0 5px rgba(255,231,150,0.95);
+            border-radius: 2px;
+        }
+        /* horizontal cab at right (front) end */
+        .h .cab { top: 4px; bottom: 4px; right: 3px; width: 27%; border-radius: 4px 8px 8px 4px; }
+        .h .cab::after { top: 24%; bottom: 24%; right: 30%; width: 30%; border-radius: 2px 1px 1px 2px; }
+        .h .cab::before { right: 1px; top: 26%; height: 16%; width: 3px; box-shadow: 0 0 5px rgba(255,231,150,0.95), 0 calc(100% + 5px) 0 0 #fff3c4; }
+        /* vertical cab at bottom (front) end */
+        .v .cab { left: 4px; right: 4px; bottom: 3px; height: 27%; border-radius: 4px 4px 8px 8px; }
+        .v .cab::after { left: 24%; right: 24%; bottom: 30%; height: 30%; border-radius: 2px 2px 1px 1px; }
+        .v .cab::before { bottom: 1px; left: 26%; width: 16%; height: 3px; box-shadow: 0 0 5px rgba(255,231,150,0.95), calc(100% + 5px) 0 0 0 #fff3c4; }
 
         /* target lorry: bright outline + soft glow + GO badge */
         .truck.target .body {
@@ -187,10 +237,15 @@
             transform: translate(-50%,-50%);
             color: #fff;
             font-weight: 900;
-            font-size: 0.8em;
-            letter-spacing: 0.06em;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            font-size: 0.78em;
+            letter-spacing: 0.08em;
+            padding: 1px 6px;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.28);
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.55);
             pointer-events: none;
+            z-index: 2;
         }
 
         /* highlight pulse used by the hint */
@@ -315,9 +370,6 @@
             else bodyClass += ' ribs';
             body.className = bodyClass;
             body.style.setProperty('--truck-color', v.color);
-            if (v.kind === 'tanker') {
-                body.style.setProperty('--tank-angle', orient === 'h' ? '180deg' : '90deg');
-            }
 
             const cab = document.createElement('div');
             cab.className = 'cab';
@@ -329,6 +381,11 @@
                 badge.textContent = 'GO';
                 body.appendChild(badge);
             }
+
+            // tyres sit behind the body and peek out along the long edges
+            const wheels = document.createElement('div');
+            wheels.className = 'wheels ' + orient;
+            el.appendChild(wheels);
             el.appendChild(body);
             // face: target + horizontals point right toward the exit; verticals point down.
             // (purely cosmetic cab placement)

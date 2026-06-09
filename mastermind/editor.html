@@ -190,6 +190,7 @@
                     <button class="btn btn-secondary" id="saveBtn">💾 Save Level</button>
                     <button class="btn btn-secondary" id="exportBtn">📥 Export JSON</button>
                     <button class="btn btn-secondary" id="shareBtn">🔗 Copy Share Link</button>
+                    <button class="btn btn-secondary" id="standaloneBtn">📦 Download Standalone Page</button>
                     <label class="btn btn-secondary" style="text-align: center; cursor: pointer;">
                         📤 Import JSON
                         <input type="file" id="importInput" accept=".json" style="display: none;">
@@ -202,6 +203,7 @@
     <script type="module">
         import { Storage } from './js/core/storage.js';
         import { PIP_SHAPES, DEFAULT_COLORS, buildPeg } from './js/core/shapes.js';
+        import { exportStandalonePage } from '../shared/standalone.js';
 
         // Editor state.
         let codeLength = 4;
@@ -479,6 +481,14 @@
                 () => alert('Share link copied to clipboard!'),
                 () => prompt('Copy this share link:', url)
             );
+        });
+
+        $('standaloneBtn').addEventListener('click', () => {
+            if (!validate()) {
+                alert('Please fix the validation errors before exporting.');
+                return;
+            }
+            exportStandalonePage({ level: getLevelData(), gameTitle: 'Mastermind' });
         });
 
         $('importInput').addEventListener('change', async (e) => {

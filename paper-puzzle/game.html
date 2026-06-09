@@ -55,20 +55,27 @@
     }
 
     let customLevel = null;
+
+    function startCustom(data) {
+      const img = new Image();
+      img.onload = () => {
+        customLevel.drawImage = (ctx, w, h) => ctx.drawImage(img, 0, 0, w, h);
+        loadLevel(-1);
+      };
+      customLevel = {
+        ...data,
+        drawImage() {}, // replaced once image loads
+      };
+      img.src = data.img; // set src after onload is wired
+    }
+
     const hashMatch = location.hash.match(/^#custom=(.+)$/);
-    if (hashMatch) {
+    if (window.STANDALONE_LEVEL) {
+      // This page was exported as a self-contained standalone puzzle.
+      try { startCustom(window.STANDALONE_LEVEL); } catch (_) { /* bad data — fall through */ }
+    } else if (hashMatch) {
       try {
-        const data = decodeCustomLevel(hashMatch[1]);
-        const img = new Image();
-        img.onload = () => {
-          customLevel.drawImage = (ctx, w, h) => ctx.drawImage(img, 0, 0, w, h);
-          loadLevel(-1);
-        };
-        customLevel = {
-          ...data,
-          drawImage() {}, // replaced once image loads
-        };
-        img.src = data.img; // set src after onload is wired
+        startCustom(decodeCustomLevel(hashMatch[1]));
       } catch (_) { /* bad hash — fall through to normal mode */ }
     }
 

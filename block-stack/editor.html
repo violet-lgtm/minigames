@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Block Stacker - Challenge Creator</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/blocks.js"></script>
+    <style>
+        .container { max-width: 560px; }
+
+        h1 { text-align: center; font-size: 1.5em; margin-bottom: 4px; color: var(--text-primary); }
+        .sub { text-align: center; color: var(--text-secondary); margin-bottom: 14px; font-size: 0.92em; }
+
+        .form-grid { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+        .form-row { display: flex; gap: 12px; }
+        .form-row > div { flex: 1; }
+        .form-grid label { font-size: 0.85em; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 3px; }
+        .form-grid input, .form-grid textarea {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--surface-border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font: inherit;
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+        .field-hint { font-size: 0.78em; color: var(--text-secondary); margin-top: 3px; }
+
+        /* skin chips, like the menu page */
+        .skin-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .skin-chip {
+            border: 2px solid var(--surface-border);
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .skin-chip .dot { width: 16px; height: 16px; border-radius: 5px; display: inline-block; }
+        .skin-chip.active { border-color: var(--accent-strong); background: rgba(246,182,46,0.15); }
+
+        .difficulty-note {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            margin: 10px 0;
+            min-height: 1.2em;
+        }
+
+        .actions { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Challenge Creator</h1>
+        <p class="sub">Design a Block Stacker challenge with its own goal and win message</p>
+
+        <div class="info-panel form-grid">
+            <div>
+                <label for="name">Challenge name</label>
+                <input type="text" id="name" maxlength="48" placeholder="My Tower Challenge" value="My Tower Challenge">
+            </div>
+            <div class="form-row">
+                <div>
+                    <label for="targetHeight">Goal (blocks to stack, 3-100)</label>
+                    <input type="number" id="targetHeight" min="3" max="100" value="10">
+                </div>
+                <div>
+                    <label for="baseSpeed">Start speed (px/s, 60-400)</label>
+                    <input type="number" id="baseSpeed" min="60" max="400" value="120">
+                </div>
+            </div>
+            <div class="form-row">
+                <div>
+                    <label for="speedStep">Speed-up per block (0-100)</label>
+                    <input type="number" id="speedStep" min="0" max="100" value="32">
+                </div>
+                <div>
+                    <label for="perfectTol">Perfect tolerance (px, 1-20)</label>
+                    <input type="number" id="perfectTol" min="1" max="20" value="5">
+                    <p class="field-hint">Bigger = easier perfect snaps</p>
+                </div>
+            </div>
+            <div>
+                <label>Block style</label>
+                <div class="skin-row" id="skinRow"></div>
+            </div>
+            <div>
+                <label for="winTitle">Win title</label>
+                <input type="text" id="winTitle" maxlength="64" placeholder="🏆 Challenge Complete!">
+            </div>
+            <div>
+                <label for="winMessage">Win message</label>
+                <input type="text" id="winMessage" maxlength="120" placeholder="You stacked them all!">
+            </div>
+        </div>
+
+        <p class="difficulty-note" id="difficultyNote"></p>
+
+        <div class="actions">
+            <button class="btn btn-primary" id="testBtn">▶️ Test Challenge</button>
+            <button class="btn btn-secondary" id="shareBtn">🔗 Copy Share Link</button>
+            <button class="btn btn-secondary" id="standaloneBtn">📦 Download Standalone Page</button>
+        </div>
+
+        <div class="controls" style="text-align:center">
+            <a href="index.html" class="btn btn-secondary">☰ Back to Menu</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { exportStandalonePage } from '../shared/standalone.js';
+
+        const $ = id => document.getElementById(id);
+        let skin = window.BlockSkins.list()[0].id;
+
+        // ---- skin picker ----
+        const skinRow = $('skinRow');
+        window.BlockSkins.list().forEach(s => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'skin-chip' + (s.id === skin ? ' active' : '');
+            const dot = document.createElement('span');
+            dot.className = 'dot';
+            dot.style.background = s.swatch || (s.colorFor ? s.colorFor(0) : '#888');
+            chip.appendChild(dot);
+            chip.appendChild(document.createTextNode(s.name));
+            chip.addEventListener('click', () => {
+                skin = s.id;
+                skinRow.querySelectorAll('.skin-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+            });
+            skinRow.appendChild(chip);
+        });
+
+        // ---- form reading + a rough difficulty read-out ----
+        function clamp(id, min, max, def) {
+            const n = parseInt($(id).value, 10);
+            const v = isNaN(n) ? def : Math.max(min, Math.min(max, n));
+            $(id).value = v;
+            return v;
+        }
+
+        function getLevelData() {
+            return {
+                id: 'custom-' + Date.now(),
+                name: $('name').value.trim() || 'Custom Challenge',
+                targetHeight: clamp('targetHeight', 3, 100, 10),
+                baseSpeed: clamp('baseSpeed', 60, 400, 120),
+                speedStep: clamp('speedStep', 0, 100, 32),
+                perfectTol: clamp('perfectTol', 1, 20, 5),
+                skin,
+                winTitle: $('winTitle').value.trim() || null,
+                winMessage: $('winMessage').value.trim() || null,
+            };
+        }
+
+        function updateDifficulty() {
+            const d = getLevelData();
+            const finalSpeed = Math.min(1000, d.baseSpeed + (d.targetHeight - 1) * d.speedStep);
+            $('difficultyNote').textContent =
+                'The last block will slide at ' + Math.round(finalSpeed) + ' px/s.';
+        }
+        ['targetHeight', 'baseSpeed', 'speedStep', 'perfectTol'].forEach(id =>
+            $(id).addEventListener('change', updateDifficulty));
+        updateDifficulty();
+
+        // ---- actions ----
+        function encodeLevel(level) {
+            return btoa(unescape(encodeURIComponent(JSON.stringify(level))));
+        }
+
+        $('testBtn').addEventListener('click', () => {
+            window.open('game.html?level=' + encodeURIComponent(encodeLevel(getLevelData())), '_blank');
+        });
+
+        $('shareBtn').addEventListener('click', () => {
+            const base = window.location.origin + window.location.pathname.replace('editor.html', 'game.html');
+            const url = base + '?level=' + encodeURIComponent(encodeLevel(getLevelData()));
+            navigator.clipboard.writeText(url).then(
+                () => alert('Share link copied to clipboard!\n\nAnyone with this link can play your challenge.'),
+                () => prompt('Copy this share link:', url)
+            );
+        });
+
+        $('standaloneBtn').addEventListener('click', () => {
+            exportStandalonePage({ level: getLevelData(), gameTitle: 'Block Stacker' });
+        });
+    </script>
+</body>
+</html>

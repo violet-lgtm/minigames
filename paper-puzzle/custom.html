@@ -238,6 +238,7 @@
       </div>
       <div class="action-row">
         <a class="btn btn-gold" id="openBtn" target="_blank">Open Puzzle →</a>
+        <button class="btn btn-sm" id="standaloneBtn">📦 Download Standalone Page</button>
         <button class="btn btn-ghost btn-sm" id="regenBtn">New seed</button>
       </div>
       <div class="win-preview-box" id="winPreviewBox"></div>
@@ -245,7 +246,9 @@
 
   </div>
 
-  <script>
+  <script type="module">
+    import { exportStandalonePage } from '../shared/standalone.js';
+
     // ── Image state ────────────────────────────────────────────────────────────
     let imageDataUrl = null;
     let imgW = 0, imgH = 0;
@@ -321,10 +324,10 @@
     }
 
     // ── Generate ───────────────────────────────────────────────────────────────
-    function generate() {
+    function buildLevelData() {
       if (!imageDataUrl) {
         document.getElementById('noImgNote').classList.add('visible');
-        return;
+        return null;
       }
 
       const name      = document.getElementById('puzzleName').value.trim() || 'Custom Puzzle';
@@ -332,14 +335,21 @@
       const winMsg    = document.getElementById('winMsg').value.trim()     || 'You solved it!';
       const numPoints = +document.getElementById('difficulty').value;
 
-      const data = {
+      return {
         name, winTitle, winMsg, numPoints,
         imageW: imgW,
         imageH: imgH,
         seed: 'c-' + Math.random().toString(36).slice(2, 10),
         img:  imageDataUrl,
       };
+    }
 
+    function generate() {
+      const data = buildLevelData();
+      if (!data) return;
+
+      const winTitle = data.winTitle;
+      const winMsg = data.winMsg;
       const encoded = encodeLevel(data);
       const gameUrl = location.href.replace(/\/[^/]*$/, '/game.html');
       const url = gameUrl.split('#')[0] + '#custom=' + encoded;
@@ -354,6 +364,13 @@
 
     document.getElementById('generateBtn').addEventListener('click', generate);
     document.getElementById('regenBtn').addEventListener('click', generate);
+
+    // ── Standalone page export ─────────────────────────────────────────────────
+    document.getElementById('standaloneBtn').addEventListener('click', () => {
+      const data = buildLevelData();
+      if (!data) return;
+      exportStandalonePage({ level: data, gameTitle: 'Paper Puzzle' });
+    });
 
     // ── Copy ───────────────────────────────────────────────────────────────────
     document.getElementById('copyBtn').addEventListener('click', () => {

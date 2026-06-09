@@ -329,12 +329,41 @@
     <script>
     (function () {
         'use strict';
-        const Levels = window.TruckJamLevels;
         const Engine = window.TruckJam;
         const Store = window.TruckJamStore;
 
-        // --- which level are we on? (?level=ID or index, else first unsolved) ---
         const params = new URLSearchParams(location.search);
+
+        // --- custom level? (baked into a standalone page, or carried in ?custom=) ---
+        let customLevel = window.STANDALONE_LEVEL || null;
+        if (!customLevel) {
+            const c = params.get('custom');
+            if (c) {
+                try { customLevel = JSON.parse(decodeURIComponent(escape(atob(c)))); }
+                catch (e) { console.error('Invalid custom level data', e); }
+            }
+        }
+        if (customLevel) {
+            const target = (customLevel.vehicles || []).find(v => v.isTarget);
+            customLevel = {
+                id: customLevel.id || 'custom',
+                name: customLevel.name || 'Custom Yard',
+                blurb: customLevel.blurb || '',
+                par: customLevel.par || 0,
+                width: 6,
+                height: 6,
+                exitRow: customLevel.exitRow != null ? customLevel.exitRow : (target ? target.y : 2),
+                vehicles: window.TruckJamDecorate(customLevel.vehicles || [])
+            };
+            if (!customLevel.par) {
+                const res = Engine.solve(customLevel, 200000);
+                customLevel.par = (res.solvable && res.moves) ? Math.max(1, res.moves.length) : 1;
+            }
+        }
+
+        const Levels = customLevel ? [customLevel] : window.TruckJamLevels;
+
+        // --- which level are we on? (?level=ID or index, else first unsolved) ---
         function resolveStartIndex() {
             const q = params.get('level');
             if (q !== null) {
@@ -493,7 +522,11 @@
                 ' &middot; par <b>' + levelDef.par + '</b>' + bestTxt;
             const last = levelIndex >= Levels.length - 1;
             const nextBtn = document.getElementById('nextLevelBtn');
-            nextBtn.textContent = last ? 'Back to Levels' : 'Next Yard →';
+            if (customLevel) {
+                nextBtn.style.display = 'none';
+            } else {
+                nextBtn.textContent = last ? 'Back to Levels' : 'Next Yard →';
+            }
             document.getElementById('winModal').classList.add('active');
         }
 
@@ -541,7 +574,7 @@
             moves = 0;
             solved = false;
             document.getElementById('levelName').textContent =
-                (levelIndex + 1) + '. ' + levelDef.name;
+                customLevel ? levelDef.name : (levelIndex + 1) + '. ' + levelDef.name;
             document.getElementById('levelBlurb').textContent = levelDef.blurb || '';
             document.getElementById('parVal').textContent = levelDef.par;
             const best = Store.getBest(levelDef.id);
@@ -550,7 +583,9 @@
             clearHint();
             document.getElementById('winModal').classList.remove('active');
             // keep URL in sync so refresh / share lands on the same yard
-            history.replaceState(null, '', '?level=' + levelDef.id);
+            if (!customLevel) {
+                try { history.replaceState(null, '', '?level=' + levelDef.id); } catch (e) { /* file:// etc. */ }
+            }
             render();
             // disable prev/next at the ends
             document.getElementById('prevBtn').disabled = levelIndex === 0;
@@ -564,9 +599,19 @@
         document.getElementById('hintBtn').addEventListener('click', showHint);
         document.getElementById('replayBtn').addEventListener('click', () => loadLevel(levelIndex));
         document.getElementById('nextLevelBtn').addEventListener('click', () => {
+            if (customLevel) return; // button is hidden for custom levels
             if (levelIndex >= Levels.length - 1) location.href = 'index.html';
             else loadLevel(levelIndex + 1);
         });
+
+        // Custom levels are a single yard: hide the catalogue navigation.
+        if (customLevel) {
+            document.getElementById('prevBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'none';
+            const levelsLink = document.querySelector('a[href="index.html"]');
+            if (levelsLink) levelsLink.style.display = 'none';
+            document.title = customLevel.name + ' - Truck Jam';
+        }
 
         loadLevel(levelIndex);
     })();

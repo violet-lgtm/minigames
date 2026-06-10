@@ -26,10 +26,14 @@ levels, presets, or pasted editor share-links) into a **trail** and generates:
 
 - **one link per game** — opening it (e.g. from a stqry screen or QR code)
   drops the player straight into that game with the trail attached. A trail
-  bar shows progress and a "Next" button after finishing.
+  bar shows progress and an in-game scores overlay.
 - **an overview link** (`trail/results.html`) — live progress, per-game
   points/stars/stats, the running total, and a celebration screen with a
   final score once every game is done.
+- **a standalone trail** (📦 Download Standalone Trail) — ONE self-contained
+  HTML file with the hub and every game embedded, hostable anywhere on its
+  own. Games run in iframes whose stqry bridges hand their storage calls to
+  the hub, which persists them via its own bridge (`shared/trail-standalone.js`).
 
 Trails can be played **in any order** (every link works any time) or in a
 **set order** (games stay locked until the previous one is finished).

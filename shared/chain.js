@@ -43,9 +43,21 @@
         }
     }
 
+    // The trail context comes either from a baked-in global (standalone trail
+    // pages, where the game runs in a srcdoc iframe without a URL) or from the
+    // ?trail=&g= query parameters of a hosted game link.
     var params = new URLSearchParams(window.location.search);
-    var def = params.get('trail') ? decodeDef(params.get('trail')) : null;
-    var index = parseInt(params.get('g'), 10);
+    var standalone = window.STANDALONE_TRAIL || null;
+    var def = null;
+    var index = NaN;
+    if (standalone && standalone.def) {
+        def = (standalone.def.v === 1 && standalone.def.id &&
+            Array.isArray(standalone.def.games)) ? standalone.def : null;
+        index = parseInt(standalone.index, 10);
+    } else {
+        def = params.get('trail') ? decodeDef(params.get('trail')) : null;
+        index = parseInt(params.get('g'), 10);
+    }
     var active = !!(def && Number.isInteger(index) && index >= 0 && index < def.games.length);
 
     if (!active) {
@@ -54,7 +66,7 @@
     }
 
     var storageKey = 'trail-' + def.id;
-    var trailB64 = params.get('trail'); // re-used verbatim when building links
+    var trailB64 = standalone ? null : params.get('trail'); // re-used verbatim when building links
     var entry = def.games[index];
     var bar = null;          // the bottom trail bar element
     var barStatus = null;
@@ -209,8 +221,22 @@
             'This game is still locked'));
         card.appendChild(el('p', 'color:#cfcfcf;margin-bottom:18px;',
             'This trail is played in a set order. Up next:'));
-        var go = el('a', BTN_CSS, '▶ ' + (def.games[firstLocked].name || def.games[firstLocked].slug));
-        go.href = gameLink(firstLocked);
+        var goLabel = '▶ ' + (def.games[firstLocked].name || def.games[firstLocked].slug);
+        var go;
+        if (standalone) {
+            // Inside a standalone trail page the hub does the navigating.
+            go = el('button', BTN_CSS, goLabel);
+            go.addEventListener('click', function () {
+                window.parent.postMessage(JSON.stringify({
+                    action: 'minigameTrail.goto',
+                    version: 'v1',
+                    data: { index: firstLocked }
+                }), '*');
+            });
+        } else {
+            go = el('a', BTN_CSS, goLabel);
+            go.href = gameLink(firstLocked);
+        }
         card.appendChild(go);
         overlay.appendChild(card);
         document.body.appendChild(overlay);

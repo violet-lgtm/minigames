@@ -58,7 +58,6 @@
     var entry = def.games[index];
     var bar = null;          // the bottom trail bar element
     var barStatus = null;
-    var barNext = null;
     var progress = null;     // cached progress object
 
     // ---- storage helpers (via the stqry bridge) ----
@@ -92,10 +91,6 @@
 
     function resultsLink() {
         return '../trail/results.html?trail=' + encodeURIComponent(trailB64);
-    }
-
-    function completedCount(prog) {
-        return prog && prog.scores ? Object.keys(prog.scores).length : 0;
     }
 
     function isDone(prog, i) {
@@ -138,9 +133,6 @@
         barStatus = el('span', 'color:#cfcfcf;');
         bar.appendChild(barStatus);
 
-        barNext = el('a', BTN_CSS + 'display:none;');
-        bar.appendChild(barNext);
-
         var overview = el('a',
             BTN_CSS + 'background:rgba(255,255,255,0.14);color:#fff;', '📋 Overview');
         overview.href = resultsLink();
@@ -149,26 +141,6 @@
         document.body.appendChild(bar);
         // keep the bar from covering page content
         document.body.style.paddingBottom = '64px';
-    }
-
-    function showNextButton(prog) {
-        var next = -1;
-        if (def.mode === 'ordered') {
-            if (index + 1 < def.games.length) next = index + 1;
-        } else {
-            // free mode: suggest the first unplayed game
-            for (var i = 0; i < def.games.length; i++) {
-                if (!isDone(prog, i)) { next = i; break; }
-            }
-        }
-        if (next === -1 || completedCount(prog) >= def.games.length) {
-            barNext.textContent = '🏁 Final score';
-            barNext.href = resultsLink();
-        } else {
-            barNext.textContent = 'Next: ' + (def.games[next].name || def.games[next].slug) + ' →';
-            barNext.href = gameLink(next);
-        }
-        barNext.style.display = 'inline-block';
     }
 
     function showLockOverlay(prog) {
@@ -214,7 +186,6 @@
             if (isDone(prog, index)) {
                 var s = prog.scores[String(index)];
                 barStatus.textContent = 'Best: ' + s.points + ' pts ' + '⭐'.repeat(s.stars || 0);
-                showNextButton(prog);
             } else {
                 barStatus.textContent = 'Finish the game to bank your score!';
             }
@@ -251,7 +222,6 @@
                 barStatus.textContent = (prev && points <= prev.points)
                     ? 'Saved — best stays ' + s.points + ' pts'
                     : '✓ Saved: ' + s.points + ' pts ' + '⭐'.repeat(s.stars);
-                showNextButton(prog);
             });
         });
     }

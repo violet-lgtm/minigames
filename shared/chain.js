@@ -58,7 +58,6 @@
     var entry = def.games[index];
     var bar = null;          // the bottom trail bar element
     var barStatus = null;
-    var barNext = null;
     var progress = null;     // cached progress object
 
     // ---- storage helpers (via the stqry bridge) ----
@@ -88,14 +87,6 @@
         }
         var sep = url.indexOf('?') === -1 ? '?' : '&';
         return '../' + url + sep + 'trail=' + encodeURIComponent(trailB64) + '&g=' + i + hash;
-    }
-
-    function resultsLink() {
-        return '../trail/results.html?trail=' + encodeURIComponent(trailB64);
-    }
-
-    function completedCount(prog) {
-        return prog && prog.scores ? Object.keys(prog.scores).length : 0;
     }
 
     function isDone(prog, i) {
@@ -138,12 +129,9 @@
         barStatus = el('span', 'color:#cfcfcf;');
         bar.appendChild(barStatus);
 
-        barNext = el('a', BTN_CSS + 'display:none;');
-        bar.appendChild(barNext);
-
-        var overview = el('a',
-            BTN_CSS + 'background:rgba(255,255,255,0.14);color:#fff;', '📋 Overview');
-        overview.href = resultsLink();
+        var overview = el('button',
+            BTN_CSS + 'background:rgba(255,255,255,0.14);color:#fff;', '📋 Scores');
+        overview.addEventListener('click', showScoresOverlay);
         bar.appendChild(overview);
 
         document.body.appendChild(bar);
@@ -151,24 +139,61 @@
         document.body.style.paddingBottom = '64px';
     }
 
-    function showNextButton(prog) {
-        var next = -1;
-        if (def.mode === 'ordered') {
-            if (index + 1 < def.games.length) next = index + 1;
-        } else {
-            // free mode: suggest the first unplayed game
-            for (var i = 0; i < def.games.length; i++) {
-                if (!isDone(prog, i)) { next = i; break; }
-            }
-        }
-        if (next === -1 || completedCount(prog) >= def.games.length) {
-            barNext.textContent = '🏁 Final score';
-            barNext.href = resultsLink();
-        } else {
-            barNext.textContent = 'Next: ' + (def.games[next].name || def.games[next].slug) + ' →';
-            barNext.href = gameLink(next);
-        }
-        barNext.style.display = 'inline-block';
+    // A lightweight overlay listing the scores banked so far in this trail.
+    function showScoresOverlay() {
+        readProgress(function (prog) {
+            renderScoresOverlay(prog || { scores: {} });
+        });
+    }
+
+    function renderScoresOverlay(prog) {
+        var scores = prog.scores || {};
+        var overlay = el('div',
+            'position:fixed;inset:0;z-index:99996;display:flex;align-items:center;justify-content:center;' +
+            'background:rgba(15,17,22,0.82);padding:20px;font:14px/1.45 system-ui,sans-serif;');
+
+        var card = el('div',
+            'width:100%;max-width:360px;max-height:80vh;overflow:auto;background:#fff;color:#1a1a1a;' +
+            'border-radius:16px;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,0.4);');
+        card.appendChild(el('div', 'font-weight:800;font-size:1.2em;margin-bottom:14px;',
+            '📋 ' + (def.title || 'Minigame Trail')));
+
+        var total = 0, totalStars = 0, done = 0;
+        def.games.forEach(function (g, i) {
+            var s = scores[String(i)];
+            var row = el('div',
+                'display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eee;');
+            row.appendChild(el('span',
+                'width:22px;font-weight:800;color:' + (s ? '#2e9e4f' : '#9aa0a8') + ';',
+                s ? '✓' : String(i + 1)));
+            row.appendChild(el('span', 'flex:1;font-weight:700;',
+                (g.name || g.slug) + (i === index ? ' (now)' : '')));
+            row.appendChild(el('span',
+                'font-weight:800;white-space:nowrap;color:' + (s ? '#1a1a1a' : '#9aa0a8') + ';',
+                s ? (s.points + ' pts ' + '⭐'.repeat(s.stars || 0)) : '—'));
+            card.appendChild(row);
+            if (s) { total += s.points; totalStars += s.stars || 0; done++; }
+        });
+
+        var totalRow = el('div',
+            'display:flex;justify-content:space-between;gap:10px;margin-top:14px;font-weight:800;font-size:1.05em;');
+        totalRow.appendChild(el('span', '',
+            done >= def.games.length ? '🏁 Final score' : 'Total so far'));
+        totalRow.appendChild(el('span', '',
+            total + ' pts · ' + totalStars + '/' + (def.games.length * 3) + ' ⭐'));
+        card.appendChild(totalRow);
+
+        var close = el('button', BTN_CSS + 'width:100%;margin-top:18px;', 'Close');
+        function dismiss() { if (overlay.parentNode) document.body.removeChild(overlay); }
+        close.addEventListener('click', dismiss);
+        card.appendChild(close);
+
+        overlay.appendChild(card);
+        // tapping the dimmed backdrop also closes the overlay
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) dismiss();
+        });
+        document.body.appendChild(overlay);
     }
 
     function showLockOverlay(prog) {
@@ -214,7 +239,6 @@
             if (isDone(prog, index)) {
                 var s = prog.scores[String(index)];
                 barStatus.textContent = 'Best: ' + s.points + ' pts ' + '⭐'.repeat(s.stars || 0);
-                showNextButton(prog);
             } else {
                 barStatus.textContent = 'Finish the game to bank your score!';
             }
@@ -251,7 +275,6 @@
                 barStatus.textContent = (prev && points <= prev.points)
                     ? 'Saved — best stays ' + s.points + ' pts'
                     : '✓ Saved: ' + s.points + ' pts ' + '⭐'.repeat(s.stars);
-                showNextButton(prog);
             });
         });
     }

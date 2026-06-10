@@ -321,8 +321,7 @@
             <div class="win-message" id="winTitle">Cleared the yard! 🚛</div>
             <div class="star-row" id="starRow">⭐⭐⭐</div>
             <div class="modal-stats" id="winStats"></div>
-            <button class="btn btn-primary" id="nextLevelBtn">Next Yard →</button>
-            <button class="btn btn-secondary" id="replayBtn">Replay</button>
+            <button class="btn btn-primary" id="replayBtn">Replay</button>
         </div>
     </div>
 
@@ -491,9 +490,6 @@
             document.getElementById('winStats').innerHTML =
                 'Cleared in <b>' + moves + '</b> move' + (moves === 1 ? '' : 's') +
                 ' &middot; par <b>' + levelDef.par + '</b>' + bestTxt;
-            const last = levelIndex >= Levels.length - 1;
-            const nextBtn = document.getElementById('nextLevelBtn');
-            nextBtn.textContent = last ? 'Back to Levels' : 'Next Yard →';
             document.getElementById('winModal').classList.add('active');
         }
 
@@ -563,10 +559,6 @@
         document.getElementById('nextBtn').addEventListener('click', () => { if (levelIndex < Levels.length - 1) loadLevel(levelIndex + 1); });
         document.getElementById('hintBtn').addEventListener('click', showHint);
         document.getElementById('replayBtn').addEventListener('click', () => loadLevel(levelIndex));
-        document.getElementById('nextLevelBtn').addEventListener('click', () => {
-            if (levelIndex >= Levels.length - 1) location.href = 'index.html';
-            else loadLevel(levelIndex + 1);
-        });
 
         loadLevel(levelIndex);
     })();

@@ -8,6 +8,8 @@
     <title>Reaction Slots</title>
     <link rel="stylesheet" href="css/common.css">
     <script src="js/i18n.js"></script>
+    <script src="../shared/stqry-bridge.js"></script>
+    <script src="../shared/chain.js"></script>
     <style>
         .container {
             max-width: 720px;
@@ -683,6 +685,17 @@
 
             const flawless = hits === NUM_REELS && baseScore === HIT_RATINGS[0].points * NUM_REELS;
             lastResult = { perReel, hits, multiplier, finalScore, isBest, flawless };
+
+            // Trail mode: bank the result for the final overview page (best
+            // round wins, so playing again can only improve the score).
+            if (window.MinigameChain && MinigameChain.active) {
+                const maxPossible = HIT_RATINGS[0].points * NUM_REELS * comboMultiplier(NUM_REELS);
+                MinigameChain.report({
+                    points: Math.round(finalScore / maxPossible * 100),
+                    stars: hits === NUM_REELS ? 3 : hits > 0 ? 2 : 1,
+                    native: { score: finalScore, hits, reels: NUM_REELS }
+                });
+            }
 
             renderResults();
             setTimeout(() => resultModal.classList.add('active'), 650);

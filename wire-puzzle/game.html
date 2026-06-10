@@ -7,6 +7,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Wire Puzzle - Play</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="../shared/stqry-bridge.js"></script>
+    <script src="../shared/chain.js"></script>
     <style>
         .game-container {
             display: flex;
@@ -499,6 +501,11 @@
         }
 
         function showWinModal() {
+            // Trail mode: bank the result for the final overview page.
+            if (window.MinigameChain && MinigameChain.active) {
+                MinigameChain.report({ points: 100, stars: 3, native: { moves: engine.moveCount } });
+            }
+
             // Set custom win message if available
             const winMessageEl = document.getElementById('winMessage');
             winMessageEl.textContent = currentLevel?.winMessage || '🎉 Level Complete!';

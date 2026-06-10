@@ -19,6 +19,28 @@ Each creator offers **🔗 Copy Share Link** (plays on this site) and
 web server or CMS as its own page). The export bundles the game's CSS and
 JavaScript and the level data into one file, so it needs no other assets.
 
+## 🧭 Trails: string games together with a final score overview
+
+The [Trail Builder](trail/builder.html) chains any mix of minigames (built-in
+levels, presets, or pasted editor share-links) into a **trail** and generates:
+
+- **one link per game** — opening it (e.g. from a stqry screen or QR code)
+  drops the player straight into that game with the trail attached. A trail
+  bar shows progress and a "Next" button after finishing.
+- **an overview link** (`trail/results.html`) — live progress, per-game
+  points/stars/stats, the running total, and a celebration screen with a
+  final score once every game is done.
+
+Trails can be played **in any order** (every link works any time) or in a
+**set order** (games stay locked until the previous one is finished).
+
+Scores are saved through `shared/stqry-bridge.js` (the STQRY storage bridge
+from [maxdammers/cookietest](https://github.com/maxdammers/cookietest)): it
+uses `stqry.storage` over `postMessage` inside the stqry app's WebView and
+falls back to `localStorage` in a normal browser, so trails work identically
+in the app and on the web. Games report a normalised 0–100 score plus 1–3
+stars on their win screen (`shared/chain.js`); replaying keeps the best.
+
 ## 🌐 Live Demo
 
 Once GitHub Pages is enabled, the games will be available at:
@@ -117,7 +139,12 @@ minigames/
 │   └── workflows/
 │       └── deploy-pages.yml  # GitHub Pages deployment
 ├── shared/
-│   └── standalone.js         # Standalone-page exporter used by all level editors
+│   ├── standalone.js         # Standalone-page exporter used by all level editors
+│   ├── stqry-bridge.js       # STQRY storage bridge (localStorage/postMessage/WebView)
+│   └── chain.js              # Trail runtime: score saving + progress bar in each game
+├── trail/
+│   ├── builder.html          # Chain games into a trail, generate the links
+│   └── results.html          # Live overview + final score page
 └── wire-puzzle/              # Wire Puzzle game
     ├── index.html            # Game menu
     ├── game.html            # Game player

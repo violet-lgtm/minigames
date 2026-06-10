@@ -71,8 +71,14 @@
       img.src = data.img; // set src after onload is wired
     }
 
+    // A baked-in level can also reference a built-in scene by number (their
+    // art is procedural and can't be serialised), e.g. { builtin: 2 }.
+    let builtinStart = null;
+
     const hashMatch = location.hash.match(/^#custom=(.+)$/);
-    if (window.STANDALONE_LEVEL) {
+    if (window.STANDALONE_LEVEL && window.STANDALONE_LEVEL.builtin) {
+      builtinStart = Math.min(Math.max(0, +window.STANDALONE_LEVEL.builtin - 1), LEVELS.length - 1);
+    } else if (window.STANDALONE_LEVEL) {
       // This page was exported as a self-contained standalone puzzle.
       try { startCustom(window.STANDALONE_LEVEL); } catch (_) { /* bad data — fall through */ }
     } else if (hashMatch) {
@@ -141,8 +147,9 @@
         document.getElementById('winTitle').textContent = def.winTitle || '🎉 Puzzle Complete!';
         document.getElementById('winMsg').textContent   = def.winMsg   || 'You solved it!';
       } else {
+        // A baked-in built-in level is fixed: no skipping to other scenes.
         document.getElementById('nextLevelBtn').style.display =
-          idx < LEVELS.length - 1 ? '' : 'none';
+          (builtinStart === null && idx < LEVELS.length - 1) ? '' : 'none';
       }
 
       if (rafId) cancelAnimationFrame(rafId);
@@ -251,6 +258,7 @@
         select.appendChild(opt);
       });
       select.addEventListener('change', () => loadLevel(+select.value));
+      if (builtinStart !== null) select.style.display = 'none';
     }
 
     document.getElementById('resetBtn').addEventListener('click', () => {
@@ -283,7 +291,8 @@
 
     if (!customLevel) {
       const urlLevel = new URLSearchParams(location.search).get('level');
-      const startIdx = urlLevel ? Math.min(Math.max(0, +urlLevel - 1), LEVELS.length - 1) : 0;
+      const startIdx = builtinStart !== null ? builtinStart
+        : urlLevel ? Math.min(Math.max(0, +urlLevel - 1), LEVELS.length - 1) : 0;
       select.value = startIdx;
       loadLevel(startIdx);
     }

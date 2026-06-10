@@ -63,11 +63,16 @@ function escapeScriptText(js) {
     return js.replace(/<\/script/gi, '<\\/script');
 }
 
-function bootstrapSource(level) {
-    const json = JSON.stringify(level).replace(/<\//g, '<\\/');
-    return `
-// Injected by the level exporter — this page is fully self-contained.
-window.STANDALONE_LEVEL = ${json};
+function bootstrapSource(level, inject) {
+    var lines = [
+        '// Injected by the level exporter — this page is fully self-contained.',
+        'window.STANDALONE_LEVEL = ' + JSON.stringify(level).replace(/<\//g, '<\\/') + ';',
+    ];
+    for (var name in (inject || {})) {
+        lines.push('window.' + name + ' = ' +
+            JSON.stringify(inject[name]).replace(/<\//g, '<\\/') + ';');
+    }
+    return lines.join('\n') + `
 (function () {
     // Some hosts (sandboxed iframes, file://) block web storage entirely;
     // fall back to an in-memory stand-in so the game still runs.
@@ -98,9 +103,10 @@ window.STANDALONE_LEVEL = ${json};
  * @param {string} [opts.gamePage='game.html'] play page, relative to the calling page
  * @param {Object} opts.level level data the game should boot straight into
  * @param {string} [opts.title] <title> for the exported page
+ * @param {Object} [opts.inject] extra globals to define (e.g. STANDALONE_TRAIL)
  * @returns {Promise<string>} complete HTML source
  */
-export async function buildStandalonePage({ gamePage = 'game.html', level, title }) {
+export async function buildStandalonePage({ gamePage = 'game.html', level, title, inject }) {
     const pageUrl = new URL(gamePage, window.location.href);
     const doc = new DOMParser().parseFromString(await fetchText(pageUrl), 'text/html');
 
@@ -114,7 +120,7 @@ export async function buildStandalonePage({ gamePage = 'game.html', level, title
 
     // The level (plus a storage fallback) must be defined before any game script runs.
     const boot = doc.createElement('script');
-    boot.textContent = bootstrapSource(level);
+    boot.textContent = bootstrapSource(level, inject);
     doc.head.insertBefore(boot, doc.head.firstChild);
 
     // Inline classic <script src="..."> files in place (order preserved).

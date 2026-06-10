@@ -166,7 +166,15 @@
         </div>
 
         <div class="panel">
-            <button class="btn" id="generateBtn" style="width:100%">🔗 Generate Links</button>
+            <div class="row" style="margin-bottom:0">
+                <button class="btn" id="generateBtn" style="flex:1">🔗 Generate Links</button>
+                <button class="btn btn-ghost" id="standaloneTrailBtn" style="flex:1">📦 Download Standalone Trail</button>
+            </div>
+            <p class="hint">
+                <strong>📦 Standalone trail:</strong> one self-contained HTML file with the hub
+                and every game inside — host it anywhere on its own (a web server, a stqry
+                screen upload) with no other files needed.
+            </p>
             <div class="links-out" id="linksOut">
                 <div style="margin-top:14px" id="linkRows"></div>
                 <p class="hint">
@@ -185,6 +193,8 @@
         import { builtInLevels as wireLevels } from '../wire-puzzle/js/core/levels.js';
         import { builtInLevels as mmLevels } from '../mastermind/js/core/levels.js';
         import { LEVELS as paperLevels } from '../paper-puzzle/js/core/levels.js';
+        import { downloadPage, pageFileName } from '../shared/standalone.js';
+        import { buildTrailPage } from '../shared/trail-standalone.js';
 
         const $ = id => document.getElementById(id);
 
@@ -196,13 +206,27 @@
         }
         const b64 = obj => btoa(asciiJson(obj));
 
-        // ---- the game catalogue: each option yields a url relative to repo root ----
+        // ---- the game catalogue ----
+        // Each option yields a url (relative to the repo root, for hosted
+        // links) and the level payload itself (baked into standalone trails).
+        const slotPresets = [
+            null,
+            { name: 'Fast Four', reels: 4, speeds: [0.55, 0.66, 0.78, 0.9] },
+            { name: 'Frenzy', reels: 5, speeds: [0.6, 0.72, 0.84, 0.96, 1.1] },
+        ];
+        const blockPresets = [
+            { name: 'Stack 8', targetHeight: 8 },
+            { name: 'Stack 12', targetHeight: 12, baseSpeed: 140 },
+            { name: 'Stack 20', targetHeight: 20, baseSpeed: 150, speedStep: 40 },
+            null,
+        ];
         const CATALOGUE = {
             'truck-jam': {
                 name: 'Truck Jam',
                 options: window.TruckJamLevels.map(l => ({
                     label: l.name + ' (par ' + l.par + ')',
                     url: 'truck-jam/game.html?level=' + l.id,
+                    level: l,
                 })),
             },
             'wire-puzzle': {
@@ -210,6 +234,7 @@
                 options: wireLevels.map(l => ({
                     label: l.name + ' (' + (l.difficulty || 'easy') + ')',
                     url: 'wire-puzzle/game.html?level=' + encodeURIComponent(b64(l)),
+                    level: l,
                 })),
             },
             'mastermind': {
@@ -217,6 +242,7 @@
                 options: mmLevels.map(l => ({
                     label: l.name + ' (' + (l.difficulty || 'easy') + ')',
                     url: 'mastermind/game.html?level=' + encodeURIComponent(b64(l)),
+                    level: l,
                 })),
             },
             'paper-puzzle': {
@@ -224,26 +250,61 @@
                 options: paperLevels.map((l, i) => ({
                     label: l.name + ' (' + (l.difficulty || 'easy') + ')',
                     url: 'paper-puzzle/game.html?level=' + (i + 1),
+                    level: { builtin: i + 1 },
                 })),
             },
             'slot-reaction': {
                 name: 'Reaction Slots',
-                options: [
-                    { label: 'Classic (3 reels)', url: 'slot-reaction/game.html' },
-                    { label: 'Fast Four (4 reels)', url: 'slot-reaction/game.html?level=' + encodeURIComponent(b64({ name: 'Fast Four', reels: 4, speeds: [0.55, 0.66, 0.78, 0.9] })) },
-                    { label: 'Frenzy (5 reels)', url: 'slot-reaction/game.html?level=' + encodeURIComponent(b64({ name: 'Frenzy', reels: 5, speeds: [0.6, 0.72, 0.84, 0.96, 1.1] })) },
-                ],
+                options: ['Classic (3 reels)', 'Fast Four (4 reels)', 'Frenzy (5 reels)'].map((label, i) => ({
+                    label,
+                    url: 'slot-reaction/game.html' +
+                        (slotPresets[i] ? '?level=' + encodeURIComponent(b64(slotPresets[i])) : ''),
+                    level: slotPresets[i],
+                })),
             },
             'block-stack': {
                 name: 'Block Stacker',
-                options: [
-                    { label: 'Goal: 8 blocks (easy)', url: 'block-stack/game.html?level=' + encodeURIComponent(b64({ name: 'Stack 8', targetHeight: 8 })) },
-                    { label: 'Goal: 12 blocks (medium)', url: 'block-stack/game.html?level=' + encodeURIComponent(b64({ name: 'Stack 12', targetHeight: 12, baseSpeed: 140 })) },
-                    { label: 'Goal: 20 blocks (hard)', url: 'block-stack/game.html?level=' + encodeURIComponent(b64({ name: 'Stack 20', targetHeight: 20, baseSpeed: 150, speedStep: 40 })) },
-                    { label: 'Endless (5 pts per block)', url: 'block-stack/game.html' },
-                ],
+                options: ['Goal: 8 blocks (easy)', 'Goal: 12 blocks (medium)',
+                          'Goal: 20 blocks (hard)', 'Endless (5 pts per block)'].map((label, i) => ({
+                    label,
+                    url: 'block-stack/game.html' +
+                        (blockPresets[i] ? '?level=' + encodeURIComponent(b64(blockPresets[i])) : ''),
+                    level: blockPresets[i],
+                })),
             },
         };
+
+        // ---- decode the level payload out of a pasted editor share link ----
+        function tryB64Json(s) {
+            try { return JSON.parse(decodeURIComponent(escape(atob(s)))); } catch (e) { /* next */ }
+            return JSON.parse(atob(s)); // wire-puzzle's plain-btoa links
+        }
+
+        function decodePastedLevel(slug, rest) {
+            // rest = 'game.html?...' and/or '#...'
+            const hPos = rest.indexOf('#');
+            const hash = hPos !== -1 ? rest.slice(hPos + 1) : '';
+            const query = rest.slice(rest.indexOf('?') + 1, hPos !== -1 ? hPos : undefined);
+            const params = new URLSearchParams(rest.indexOf('?') !== -1 ? query : '');
+
+            const hashCustom = hash.match(/^custom=(.+)$/); // paper-puzzle b64url
+            if (hashCustom) {
+                let b = hashCustom[1].replace(/-/g, '+').replace(/_/g, '/');
+                while (b.length % 4) b += '=';
+                return tryB64Json(b);
+            }
+            if (params.get('custom')) return tryB64Json(params.get('custom')); // truck-jam editor
+            const lvl = params.get('level');
+            if (lvl) {
+                if (slug === 'paper-puzzle' && /^\d+$/.test(lvl)) return { builtin: +lvl };
+                if (slug === 'truck-jam') {
+                    const builtin = window.TruckJamLevels.find(l => l.id === lvl);
+                    if (builtin) return builtin;
+                }
+                return tryB64Json(lvl);
+            }
+            return null; // no level params: the game's own defaults
+        }
 
         // ---- pickers ----
         const gameSelect = $('gameSelect');
@@ -316,7 +377,7 @@
             $('addErr').textContent = '';
             const slug = gameSelect.value;
             const opt = CATALOGUE[slug].options[+levelSelect.value];
-            trail.push({ slug, name: CATALOGUE[slug].name, label: opt.label, url: opt.url });
+            trail.push({ slug, name: CATALOGUE[slug].name, label: opt.label, url: opt.url, level: opt.level });
             renderTrail();
         });
 
@@ -329,11 +390,20 @@
                 $('addErr').textContent = 'Could not recognise that link — paste a share link that points at a game.html page.';
                 return;
             }
+            let level = null;
+            let levelError = false;
+            try {
+                level = decodePastedLevel(slug, m[2]);
+            } catch (e) {
+                levelError = true; // hosted links still work; standalone embed won't
+            }
             trail.push({
                 slug,
                 name: CATALOGUE[slug].name,
-                label: 'Custom level (pasted link)',
+                label: 'Custom level (pasted link)' + (levelError ? ' — ⚠ link-only' : ''),
                 url: slug + '/' + m[2],
+                level,
+                levelError,
             });
             $('customLink').value = '';
             renderTrail();
@@ -373,19 +443,28 @@
             return row;
         }
 
-        $('generateBtn').addEventListener('click', () => {
-            $('addErr').textContent = '';
-            if (trail.length < 2) {
-                $('addErr').textContent = 'Add at least two games to make a trail.';
-                return;
-            }
-            const def = {
+        function makeDef() {
+            return {
                 v: 1,
                 id: 'tr-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
                 title: $('trailTitle').value.trim() || 'Minigame Trail',
                 mode: document.querySelector('input[name="mode"]:checked').value,
                 games: trail.map(t => ({ slug: t.slug, name: t.name, url: t.url })),
             };
+        }
+
+        function requireTrail() {
+            $('addErr').textContent = '';
+            if (trail.length < 2) {
+                $('addErr').textContent = 'Add at least two games to make a trail.';
+                return false;
+            }
+            return true;
+        }
+
+        $('generateBtn').addEventListener('click', () => {
+            if (!requireTrail()) return;
+            const def = makeDef();
             const trailB64 = b64(def);
             const rootUrl = new URL('..', window.location.href).href;
 
@@ -398,6 +477,36 @@
                     buildGameLink(rootUrl, trailB64, def.games, i)));
             });
             $('linksOut').classList.add('visible');
+        });
+
+        // ---- standalone trail: one self-contained HTML file ----
+        $('standaloneTrailBtn').addEventListener('click', async () => {
+            if (!requireTrail()) return;
+            const bad = trail.filter(t => t.levelError);
+            if (bad.length) {
+                $('addErr').textContent = 'Cannot embed ' +
+                    bad.map(t => t.name).join(', ') +
+                    ' — that pasted link could not be decoded. Remove it or re-paste a fresh editor share link.';
+                return;
+            }
+            const btn = $('standaloneTrailBtn');
+            const orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ Building…';
+            try {
+                const def = makeDef();
+                const html = await buildTrailPage({ def, levels: trail.map(t => t.level || null) });
+                downloadPage(pageFileName(def.title + ' trail'), html);
+                alert('Standalone trail downloaded!\n\nThe single file contains the hub and every game — ' +
+                    'host it anywhere (any web server, a stqry screen upload…) and it works on its own. ' +
+                    'Scores are saved on the device, or through the stqry app when hosted in its WebView.');
+            } catch (err) {
+                alert('Could not build the standalone trail: ' + err.message +
+                    '\n\nNote: this feature needs the site to be served over HTTP(S).');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = orig;
+            }
         });
     </script>
 </body>

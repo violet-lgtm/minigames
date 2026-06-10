@@ -10,6 +10,8 @@
     <script src="js/core/engine.js"></script>
     <script src="js/core/levels.js"></script>
     <script src="js/core/storage.js"></script>
+    <script src="../shared/stqry-bridge.js"></script>
+    <script src="../shared/chain.js"></script>
     <style>
         .game-container { max-width: 560px; }
 
@@ -514,6 +516,15 @@
 
         function showWin(isBest) {
             const stars = starsFor(moves, levelDef.par);
+            // Trail mode: bank the result for the final overview page.
+            // Closer to par = more points.
+            if (window.MinigameChain && MinigameChain.active) {
+                MinigameChain.report({
+                    points: Math.max(10, Math.min(100, Math.round(levelDef.par / moves * 100))),
+                    stars: stars,
+                    native: { moves: moves, par: levelDef.par }
+                });
+            }
             document.getElementById('starRow').textContent =
                 '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
             const bestTxt = isBest ? ' <b>(new best!)</b>' : '';

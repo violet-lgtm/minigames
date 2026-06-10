@@ -7,6 +7,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Mastermind - Play</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="../shared/stqry-bridge.js"></script>
+    <script src="../shared/chain.js"></script>
     <style>
         .game-area {
             display: flex;
@@ -536,6 +538,18 @@
         }
 
         function showEndModal(state) {
+            // Trail mode: bank a win for the final overview page. Fewer
+            // guesses = more points.
+            if (state.won && window.MinigameChain && MinigameChain.active) {
+                const m = currentLevel.config.maxGuesses;
+                const u = state.guessesUsed;
+                MinigameChain.report({
+                    points: Math.round(100 * (m - u + 1) / m),
+                    stars: u <= Math.ceil(m / 3) ? 3 : u <= Math.ceil(2 * m / 3) ? 2 : 1,
+                    native: { guesses: u, maxGuesses: m },
+                });
+            }
+
             const modal = document.getElementById('endModal');
             const title = document.getElementById('endTitle');
             const message = document.getElementById('endMessage');

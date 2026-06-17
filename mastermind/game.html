@@ -7,6 +7,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Mastermind - Play</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="../shared/stqry-bridge.js"></script>
+    <script src="../shared/chain.js"></script>
     <style>
         .game-area {
             display: flex;
@@ -266,7 +268,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get('mode') || 'builtin';
         const levelParam = urlParams.get('level');
-        const testLevel = Storage.getTestLevel();
+        const standaloneLevel = window.STANDALONE_LEVEL || null;
+        const testLevel = standaloneLevel ? null : Storage.getTestLevel();
 
         let levels = [];
         let currentLevelIndex = -1;
@@ -274,7 +277,13 @@
         let engine = null;
         let pegSize = 46;
 
-        if (levelParam) {
+        if (standaloneLevel) {
+            // This page was exported as a self-contained standalone level.
+            levels = [standaloneLevel];
+            currentLevelIndex = 0;
+            document.getElementById('pageTitle').textContent = standaloneLevel.name || 'Mastermind';
+            startGame(standaloneLevel);
+        } else if (levelParam) {
             try {
                 const level = JSON.parse(decodeURIComponent(escape(atob(levelParam))));
                 levels = [level];
@@ -371,7 +380,7 @@
             const len = level.config.codeLength;
             pegSize = len <= 4 ? 48 : len <= 6 ? 42 : 36;
 
-            document.getElementById('shareBtn').style.display = (levelParam || mode === 'custom') ? 'inline-block' : 'none';
+            document.getElementById('shareBtn').style.display = ((levelParam || mode === 'custom') && !standaloneLevel) ? 'inline-block' : 'none';
             document.getElementById('backBtn').style.display = (levels.length > 1) ? 'inline-block' : 'none';
 
             engine = new MastermindEngine(level);
@@ -529,6 +538,18 @@
         }
 
         function showEndModal(state) {
+            // Trail mode: bank a win for the final overview page. Fewer
+            // guesses = more points.
+            if (state.won && window.MinigameChain && MinigameChain.active) {
+                const m = currentLevel.config.maxGuesses;
+                const u = state.guessesUsed;
+                MinigameChain.report({
+                    points: Math.round(100 * (m - u + 1) / m),
+                    stars: u <= Math.ceil(m / 3) ? 3 : u <= Math.ceil(2 * m / 3) ? 2 : 1,
+                    native: { guesses: u, maxGuesses: m },
+                });
+            }
+
             const modal = document.getElementById('endModal');
             const title = document.getElementById('endTitle');
             const message = document.getElementById('endMessage');

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Truck Jam - Yard Editor</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="js/core/engine.js"></script>
+    <script src="js/core/levels.js"></script>
+    <style>
+        .editor-container { max-width: 560px; }
+
+        h1 { text-align: center; font-size: 1.5em; margin-bottom: 4px; color: var(--text-primary); }
+        .sub { text-align: center; color: var(--text-secondary); margin-bottom: 14px; font-size: 0.92em; }
+
+        /* ---- the yard (same look as the game) ---- */
+        .yard-wrap {
+            position: relative;
+            margin: 4px auto 8px;
+            padding-right: 26px;
+        }
+        .yard {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background:
+                repeating-linear-gradient(0deg,  rgba(0,0,0,0.05) 0 1px, transparent 1px calc(100%/6)),
+                repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 1px, transparent 1px calc(100%/6)),
+                linear-gradient(160deg, #5a5f66 0%, #494e54 100%);
+            border-radius: 14px;
+            box-shadow: inset 0 0 0 3px rgba(0,0,0,0.18), 0 10px 28px rgba(0,0,0,0.22);
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: crosshair;
+        }
+        .exit-gate {
+            position: absolute;
+            right: -4px;
+            width: 30px;
+            height: calc(100% / 6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffe08a;
+            font-size: 1.4em;
+            font-weight: 800;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+            pointer-events: none;
+            transition: top 0.2s;
+        }
+
+        .truck {
+            position: absolute;
+            box-sizing: border-box;
+            padding: 5px;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .truck .body {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+            background: var(--truck-color, #888);
+            box-shadow:
+                inset 0 0 0 1.5px rgba(0,0,0,0.30),
+                inset 0 4px 8px rgba(255,255,255,0.20),
+                inset 0 -6px 10px rgba(0,0,0,0.22),
+                0 4px 8px rgba(0,0,0,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 900;
+            font-size: 0.75em;
+            letter-spacing: 0.06em;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        .truck:hover .body { filter: brightness(1.15); }
+        .truck.target .body { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.55), 0 0 0 2px rgba(255,255,255,0.35), 0 4px 12px rgba(226,59,46,0.55); }
+
+        /* ---- toolbox ---- */
+        .toolbox {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin: 12px 0;
+        }
+        .tool {
+            border: 2px solid var(--surface-border);
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 10px 14px;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+            color: var(--text-primary);
+            transition: border-color 0.15s, transform 0.1s;
+        }
+        .tool:hover { transform: translateY(-1px); }
+        .tool.active { border-color: var(--accent-strong); background: rgba(246,182,46,0.15); }
+
+        .form-grid { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; text-align: left; }
+        .form-grid label { font-size: 0.85em; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 3px; }
+        .form-grid input, .form-grid textarea {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--surface-border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font: inherit;
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .status {
+            text-align: center;
+            font-weight: 700;
+            min-height: 1.4em;
+            margin: 8px 0;
+        }
+        .status.ok { color: var(--good-color); }
+        .status.bad { color: var(--miss-color); }
+
+        .hint-note { text-align: center; color: var(--text-secondary); font-size: 0.85em; margin: 4px 0 10px; }
+
+        .actions { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+    </style>
+</head>
+<body>
+    <div class="container editor-container">
+        <h1>🔧 Yard Editor</h1>
+        <p class="sub">Design your own Truck Jam puzzle</p>
+
+        <div class="toolbox">
+            <button class="tool" data-tool="target" id="toolTarget">🚨 Your lorry (2)</button>
+            <button class="tool active" data-tool="truck2" id="toolTruck2">🚚 Truck (2)</button>
+            <button class="tool" data-tool="truck3" id="toolTruck3">🚛 Lorry (3)</button>
+            <button class="tool" id="dirBtn" title="Toggle orientation">↔ Horizontal</button>
+        </div>
+
+        <div class="yard-wrap">
+            <div class="yard" id="yard"></div>
+            <div class="exit-gate" id="exitGate">➜</div>
+        </div>
+        <p class="hint-note">Click an empty cell to place the selected vehicle. Click a vehicle to remove it. The exit gate follows your red lorry's row.</p>
+
+        <div class="status" id="statusMsg"></div>
+
+        <div class="info-panel form-grid">
+            <div>
+                <label for="levelName">Yard name</label>
+                <input type="text" id="levelName" maxlength="48" placeholder="My Yard" value="My Yard">
+            </div>
+            <div>
+                <label for="levelBlurb">Description (shown under the name)</label>
+                <input type="text" id="levelBlurb" maxlength="80" placeholder="Clear a path to the gate!">
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" id="testBtn">▶️ Test Level</button>
+            <button class="btn btn-secondary" id="clearBtn">🗑️ Clear Yard</button>
+            <button class="btn btn-secondary" id="shareBtn">🔗 Copy Share Link</button>
+            <button class="btn btn-secondary" id="standaloneBtn">📦 Download Standalone Page</button>
+        </div>
+
+        <div class="controls">
+            <a href="index.html" class="btn btn-secondary">☰ Back to Levels</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { exportStandalonePage } from '../shared/standalone.js';
+
+        const Engine = window.TruckJam;
+        const decorate = window.TruckJamDecorate;
+        const CELLS = 6;
+        const pct = (n) => (n / CELLS * 100) + '%';
+
+        const yard = document.getElementById('yard');
+        const statusMsg = document.getElementById('statusMsg');
+
+        let vehicles = [
+            { id: 'target', x: 1, y: 2, len: 2, dir: 'h', isTarget: true }
+        ];
+        let nextId = 0;
+        let tool = 'truck2';
+        let dir = 'h';
+        let lastSolve = { solvable: false, par: 0 };
+
+        // ---------- placement helpers ----------
+        function cellsOf(v) {
+            const cells = [];
+            for (let i = 0; i < v.len; i++) {
+                cells.push(v.dir === 'h' ? [v.x + i, v.y] : [v.x, v.y + i]);
+            }
+            return cells;
+        }
+
+        function vehicleAt(x, y) {
+            return vehicles.find(v => cellsOf(v).some(([cx, cy]) => cx === x && cy === y));
+        }
+
+        function fits(v) {
+            const cells = cellsOf(v);
+            return cells.every(([cx, cy]) =>
+                cx >= 0 && cx < CELLS && cy >= 0 && cy < CELLS && !vehicleAt(cx, cy));
+        }
+
+        function exitRow() {
+            const t = vehicles.find(v => v.isTarget);
+            return t ? t.y : 2;
+        }
+
+        // ---------- rendering ----------
+        function render() {
+            yard.innerHTML = '';
+            const decorated = decorate(vehicles.map(v => ({ ...v })));
+            decorated.forEach((v, i) => {
+                const el = document.createElement('div');
+                el.className = 'truck' + (v.isTarget ? ' target' : '');
+                el.style.left = pct(v.x);
+                el.style.top = pct(v.y);
+                el.style.width = pct(v.dir === 'h' ? v.len : 1);
+                el.style.height = pct(v.dir === 'v' ? v.len : 1);
+                const body = document.createElement('div');
+                body.className = 'body';
+                body.style.setProperty('--truck-color', v.color);
+                if (v.isTarget) body.textContent = 'GO';
+                el.appendChild(body);
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    vehicles.splice(i, 1);
+                    onChange();
+                });
+                yard.appendChild(el);
+            });
+            document.getElementById('exitGate').style.top = pct(exitRow());
+        }
+
+        // ---------- validation ----------
+        function validate() {
+            const target = vehicles.find(v => v.isTarget);
+            if (!target) {
+                lastSolve = { solvable: false, par: 0 };
+                setStatus('Place your red lorry first (🚨 tool).', false);
+                return false;
+            }
+            if (vehicles.length < 2) {
+                lastSolve = { solvable: false, par: 0 };
+                setStatus('Add at least one obstacle truck.', false);
+                return false;
+            }
+            const level = { width: CELLS, height: CELLS, exitRow: exitRow(), vehicles: vehicles.map(v => ({ ...v })) };
+            const res = Engine.solve(level, 200000);
+            if (!res.solvable || !res.moves || res.moves.length === 0) {
+                lastSolve = { solvable: false, par: 0 };
+                setStatus(res.moves && res.moves.length === 0
+                    ? 'Too easy — the lorry can already drive out. Add obstacles!'
+                    : '✗ Not solvable — no way to free the red lorry.', false);
+                return false;
+            }
+            lastSolve = { solvable: true, par: res.moves.length };
+            setStatus('✓ Solvable — optimal solution: ' + res.moves.length + ' moves (par)', true);
+            return true;
+        }
+
+        function setStatus(text, ok) {
+            statusMsg.textContent = text;
+            statusMsg.className = 'status ' + (ok ? 'ok' : 'bad');
+        }
+
+        function onChange() {
+            render();
+            validate();
+        }
+
+        // ---------- yard clicks: place vehicles ----------
+        yard.addEventListener('click', (e) => {
+            const rect = yard.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / rect.width * CELLS);
+            const y = Math.floor((e.clientY - rect.top) / rect.height * CELLS);
+            if (x < 0 || x >= CELLS || y < 0 || y >= CELLS) return;
+            if (vehicleAt(x, y)) return; // clicks on vehicles are handled per-element
+
+            let v;
+            if (tool === 'target') {
+                // the target lorry is always horizontal so it can reach the right-hand gate
+                v = { id: 'target', x, y, len: 2, dir: 'h', isTarget: true };
+                const saved = vehicles;
+                vehicles = vehicles.filter(o => !o.isTarget);
+                if (!fits(v)) {
+                    vehicles = saved;
+                    setStatus("Doesn't fit there — it would overlap or stick out of the yard.", false);
+                    return;
+                }
+            } else {
+                v = { id: 'v' + (nextId++), x, y, len: tool === 'truck3' ? 3 : 2, dir, isTarget: false };
+                if (!fits(v)) {
+                    setStatus("Doesn't fit there — it would overlap or stick out of the yard.", false);
+                    return;
+                }
+            }
+            vehicles.push(v);
+            onChange();
+        });
+
+        // ---------- toolbox ----------
+        document.querySelectorAll('.tool[data-tool]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                tool = btn.dataset.tool;
+                document.querySelectorAll('.tool[data-tool]').forEach(b =>
+                    b.classList.toggle('active', b === btn));
+            });
+        });
+
+        document.getElementById('dirBtn').addEventListener('click', () => {
+            dir = dir === 'h' ? 'v' : 'h';
+            document.getElementById('dirBtn').textContent = dir === 'h' ? '↔ Horizontal' : '↕ Vertical';
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (!confirm('Clear the whole yard?')) return;
+            vehicles = [];
+            onChange();
+        });
+
+        // ---------- level data + actions ----------
+        function getLevelData() {
+            return {
+                id: 'custom-' + Date.now(),
+                name: document.getElementById('levelName').value.trim() || 'Custom Yard',
+                blurb: document.getElementById('levelBlurb').value.trim() || '',
+                width: CELLS,
+                height: CELLS,
+                exitRow: exitRow(),
+                par: lastSolve.par,
+                vehicles: vehicles.map(v => ({ id: v.id, x: v.x, y: v.y, len: v.len, dir: v.dir, isTarget: !!v.isTarget }))
+            };
+        }
+
+        function encodeLevel(level) {
+            return btoa(unescape(encodeURIComponent(JSON.stringify(level))));
+        }
+
+        function requireSolvable() {
+            if (validate()) return true;
+            alert('Please fix the yard first — it must contain your red lorry and be solvable.');
+            return false;
+        }
+
+        document.getElementById('testBtn').addEventListener('click', () => {
+            if (!requireSolvable()) return;
+            window.open('game.html?custom=' + encodeURIComponent(encodeLevel(getLevelData())), '_blank');
+        });
+
+        document.getElementById('shareBtn').addEventListener('click', () => {
+            if (!requireSolvable()) return;
+            const base = window.location.origin + window.location.pathname.replace('editor.html', 'game.html');
+            const url = base + '?custom=' + encodeURIComponent(encodeLevel(getLevelData()));
+            navigator.clipboard.writeText(url).then(
+                () => alert('Share link copied to clipboard!\n\nAnyone with this link can play your yard.'),
+                () => prompt('Copy this share link:', url)
+            );
+        });
+
+        document.getElementById('standaloneBtn').addEventListener('click', () => {
+            if (!requireSolvable()) return;
+            exportStandalonePage({ level: getLevelData(), gameTitle: 'Truck Jam' });
+        });
+
+        onChange();
+    </script>
+</body>
+</html>

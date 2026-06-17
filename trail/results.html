@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Trail Overview</title>
+    <script src="../shared/stqry-bridge.js"></script>
+    <style>
+        :root {
+            --accent: #f6b62e;
+            --accent-strong: #e2a31c;
+            --surface: #ffffff;
+            --surface-border: #e7e7e7;
+            --text-primary: #1a1a1a;
+            --text-secondary: #5e5e5e;
+            --good-color: #2e9e4f;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f4f4f6;
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px 14px 40px;
+        }
+        .wrap { max-width: 560px; margin: 0 auto; }
+
+        header { text-align: center; margin-bottom: 16px; }
+        header h1 { font-size: 1.5em; }
+        .mode-badge {
+            display: inline-block;
+            font-size: 0.75em;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 20px;
+            padding: 4px 12px;
+            margin-top: 6px;
+            color: var(--text-secondary);
+        }
+
+        .progress-panel {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        .stat .label { font-size: 0.72em; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; }
+        .stat .value { font-size: 1.6em; font-weight: 800; }
+
+        .final-panel {
+            display: none;
+            background: linear-gradient(160deg, #fff8e6, #ffefc2);
+            border: 2px solid var(--accent-strong);
+            border-radius: 16px;
+            padding: 22px 16px;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+        .final-panel.visible { display: block; }
+        .final-panel .big { font-size: 2.6em; font-weight: 800; color: var(--accent-strong); line-height: 1.1; }
+        .final-panel .grade { font-size: 1.3em; margin: 6px 0; }
+        .final-panel p { color: var(--text-secondary); margin-top: 6px; }
+
+        .game-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+        .game-card.locked { opacity: 0.55; }
+        .game-card .num {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: #ececec;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+        .game-card.done .num { background: var(--good-color); color: #fff; }
+        .game-card .info { flex: 1; min-width: 0; }
+        .game-card .name { font-weight: 800; }
+        .game-card .detail { font-size: 0.82em; color: var(--text-secondary); margin-top: 2px; }
+        .game-card .score { text-align: right; flex-shrink: 0; }
+        .game-card .pts { font-weight: 800; font-size: 1.15em; }
+        .game-card .stars { font-size: 0.85em; letter-spacing: 1px; }
+
+        .btn {
+            display: inline-block;
+            border: 0;
+            border-radius: 10px;
+            padding: 9px 16px;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            background: var(--accent);
+            color: #1a1a1a;
+            white-space: nowrap;
+        }
+        .btn:hover { background: var(--accent-strong); }
+        .btn-ghost { background: #ececec; }
+        .btn-ghost:hover { background: #ddd; }
+
+        .footer-row { text-align: center; margin-top: 18px; }
+        .error { text-align: center; color: var(--text-secondary); padding: 60px 20px; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header>
+            <h1 id="trailTitle">🏁 Trail Overview</h1>
+            <span class="mode-badge" id="modeBadge"></span>
+        </header>
+
+        <div class="final-panel" id="finalPanel">
+            <div id="finalGreeting" style="font-weight:800;">🎉 Trail complete!</div>
+            <div class="big"><span id="finalPts">0</span> pts</div>
+            <div class="grade" id="finalGrade"></div>
+            <p id="finalStars"></p>
+        </div>
+
+        <div class="progress-panel" id="progressPanel">
+            <div class="stat"><div class="label">Games</div><div class="value" id="doneVal">0/0</div></div>
+            <div class="stat"><div class="label">Score</div><div class="value" id="ptsVal">0</div></div>
+            <div class="stat"><div class="label">Stars</div><div class="value" id="starsVal">0</div></div>
+        </div>
+
+        <div id="gameList"></div>
+
+        <div class="footer-row">
+            <button class="btn btn-ghost" id="resetBtn">↺ Restart Trail</button>
+        </div>
+    </div>
+
+    <div class="error" id="errorBox" style="display:none">
+        No trail found. Open this page through a trail link made with the
+        <a href="builder.html">trail builder</a>.
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        // ---- decode the trail definition from the URL ----
+        function decodeDef(b64) {
+            try {
+                var def = JSON.parse(decodeURIComponent(escape(atob(b64))));
+                if (!def || def.v !== 1 || !def.id || !Array.isArray(def.games)) return null;
+                return def;
+            } catch (e) { return null; }
+        }
+
+        var params = new URLSearchParams(location.search);
+        var trailB64 = params.get('trail');
+        var def = trailB64 ? decodeDef(trailB64) : null;
+
+        if (!def) {
+            document.querySelector('.wrap').style.display = 'none';
+            document.getElementById('errorBox').style.display = 'block';
+            return;
+        }
+
+        var storageKey = 'trail-' + def.id;
+        var N = def.games.length;
+
+        document.getElementById('trailTitle').textContent = '🏁 ' + (def.title || 'Minigame Trail');
+        document.getElementById('modeBadge').textContent =
+            def.mode === 'ordered' ? '➡️ Play in order' : '🔀 Play in any order';
+        document.title = (def.title || 'Trail') + ' - Overview';
+
+        function gameLink(i) {
+            var url = def.games[i].url;
+            var hash = '';
+            var hashPos = url.indexOf('#');
+            if (hashPos !== -1) { hash = url.slice(hashPos); url = url.slice(0, hashPos); }
+            var sep = url.indexOf('?') === -1 ? '?' : '&';
+            return '../' + url + sep + 'trail=' + encodeURIComponent(trailB64) + '&g=' + i + hash;
+        }
+
+        // A short human line for each game's own stats.
+        function nativeSummary(slug, n) {
+            if (!n) return '';
+            switch (slug) {
+                case 'truck-jam':     return n.moves + ' moves (par ' + n.par + ')';
+                case 'mastermind':    return n.guesses + '/' + n.maxGuesses + ' guesses';
+                case 'wire-puzzle':   return n.moves + ' moves';
+                case 'slot-reaction': return n.score + ' pts, ' + n.hits + '/' + n.reels + ' hits';
+                case 'block-stack':   return n.blocks + ' blocks stacked';
+                case 'paper-puzzle':  return n.pieces ? n.pieces + ' pieces placed' : 'solved';
+                default: return '';
+            }
+        }
+
+        function isDone(prog, i) {
+            return !!(prog && prog.scores && prog.scores[String(i)]);
+        }
+
+        function isUnlocked(prog, i) {
+            if (def.mode !== 'ordered') return true;
+            for (var j = 0; j < i; j++) if (!isDone(prog, j)) return false;
+            return true;
+        }
+
+        function render(prog) {
+            var scores = (prog && prog.scores) || {};
+            var done = 0, totalPts = 0, totalStars = 0;
+
+            var list = document.getElementById('gameList');
+            list.innerHTML = '';
+
+            def.games.forEach(function (g, i) {
+                var s = scores[String(i)];
+                var unlocked = isUnlocked(prog, i);
+                var card = document.createElement('div');
+                card.className = 'game-card' + (s ? ' done' : '') + (!unlocked ? ' locked' : '');
+
+                var num = document.createElement('div');
+                num.className = 'num';
+                num.textContent = s ? '✓' : (i + 1);
+                card.appendChild(num);
+
+                var info = document.createElement('div');
+                info.className = 'info';
+                var name = document.createElement('div');
+                name.className = 'name';
+                name.textContent = g.name || g.slug;
+                info.appendChild(name);
+                var detail = document.createElement('div');
+                detail.className = 'detail';
+                detail.textContent = s ? nativeSummary(g.slug, s.native)
+                    : (unlocked ? 'Not played yet' : 'Locked — finish the games before it');
+                info.appendChild(detail);
+                card.appendChild(info);
+
+                if (s) {
+                    done++;
+                    totalPts += s.points;
+                    totalStars += s.stars || 0;
+                    var sc = document.createElement('div');
+                    sc.className = 'score';
+                    sc.innerHTML = '<div class="pts">' + s.points + '</div>' +
+                        '<div class="stars">' + '⭐'.repeat(s.stars || 0) + '</div>';
+                    card.appendChild(sc);
+                }
+                if (unlocked) {
+                    var play = document.createElement('a');
+                    play.className = 'btn' + (s ? ' btn-ghost' : '');
+                    play.textContent = s ? 'Improve' : 'Play →';
+                    play.href = gameLink(i);
+                    card.appendChild(play);
+                } else {
+                    var lock = document.createElement('span');
+                    lock.textContent = '🔒';
+                    card.appendChild(lock);
+                }
+                list.appendChild(card);
+            });
+
+            document.getElementById('doneVal').textContent = done + '/' + N;
+            document.getElementById('ptsVal').textContent = totalPts;
+            document.getElementById('starsVal').textContent = totalStars + '/' + N * 3;
+
+            // The grand finale.
+            var finalPanel = document.getElementById('finalPanel');
+            if (done === N && N > 0) {
+                finalPanel.classList.add('visible');
+                document.getElementById('finalPts').textContent = totalPts;
+                document.getElementById('finalStars').textContent =
+                    '⭐'.repeat(totalStars) + ' (' + totalStars + ' of ' + N * 3 + ' stars)';
+                var pct = totalPts / (N * 100);
+                document.getElementById('finalGrade').textContent =
+                    pct >= 0.9 ? '🏆 Outstanding!'
+                    : pct >= 0.7 ? '🥇 Great run!'
+                    : pct >= 0.5 ? '🥈 Well done!'
+                    : '🥉 Trail completed!';
+                if (window.stqry && stqry.user) {
+                    stqry.user.get(function (user) {
+                        if (user && user.name && !user.isGuest) {
+                            document.getElementById('finalGreeting').textContent =
+                                '🎉 Trail complete, ' + user.name + '!';
+                        }
+                    });
+                }
+            } else {
+                finalPanel.classList.remove('visible');
+            }
+        }
+
+        function refresh() {
+            if (!window.stqry) { render(null); return; }
+            stqry.storage.get(storageKey, function (value) {
+                render(value || null);
+            });
+        }
+
+        document.getElementById('resetBtn').addEventListener('click', function () {
+            if (!confirm('Restart the trail? All saved scores will be cleared.')) return;
+            if (window.stqry) {
+                stqry.storage.remove(storageKey, refresh);
+            }
+        });
+
+        // Live-update when a game saves a score in another tab/context.
+        window.addEventListener('stqryStorageUpdated', refresh);
+        window.addEventListener('storage', refresh);
+
+        refresh();
+    })();
+    </script>
+</body>
+</html>

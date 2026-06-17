@@ -249,6 +249,7 @@
                         <button class="btn btn-secondary" id="saveBtn" style="width: 100%;">💾 Save Level</button>
                         <button class="btn btn-secondary" id="exportBtn" style="width: 100%;">📥 Export JSON</button>
                         <button class="btn btn-secondary" id="shareLinkBtn" style="width: 100%;">🔗 Copy Share Link</button>
+                        <button class="btn btn-secondary" id="standaloneBtn" style="width: 100%;">📦 Download Standalone Page</button>
                         <label class="btn btn-secondary" style="width: 100%; text-align: center; cursor: pointer;">
                             📤 Import JSON
                             <input type="file" id="importInput" accept=".json" style="display: none;">
@@ -277,6 +278,7 @@
         import { Storage } from './js/core/storage.js';
         import { GameEngine } from './js/core/engine.js';
         import { ThemeManager } from './js/core/themes.js';
+        import { exportStandalonePage } from '../shared/standalone.js';
 
         const tileTypes = [
             { type: 'power', name: 'Power' },
@@ -548,6 +550,7 @@
             document.getElementById('saveBtn').addEventListener('click', saveLevel);
             document.getElementById('exportBtn').addEventListener('click', exportLevel);
             document.getElementById('shareLinkBtn').addEventListener('click', copyShareLink);
+            document.getElementById('standaloneBtn').addEventListener('click', downloadStandalone);
             document.getElementById('importInput').addEventListener('change', importLevel);
         }
 
@@ -825,6 +828,14 @@
                 document.body.removeChild(textarea);
                 alert('Share link copied to clipboard!\n\nAnyone with this link can play your level.');
             });
+        }
+
+        function downloadStandalone() {
+            if (!validateLevel()) {
+                alert('Please fix the validation errors before exporting.');
+                return;
+            }
+            exportStandalonePage({ level: getLevelData(), gameTitle: 'Wire Puzzle' });
         }
 
         async function importLevel(e) {

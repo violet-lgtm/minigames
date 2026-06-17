@@ -8,6 +8,8 @@
     <title>Block Stacker</title>
     <link rel="stylesheet" href="css/common.css">
     <script src="js/blocks.js"></script>
+    <script src="../shared/stqry-bridge.js"></script>
+    <script src="../shared/chain.js"></script>
     <style>
         .container {
             max-width: 560px;
@@ -152,6 +154,21 @@
         const SKIN_KEY = 'blockStack.skin';
         const BEST_KEY = 'blockStack.best';
 
+        // Custom challenge: baked into a standalone page, or carried in ?level=
+        const CHALLENGE = (function () {
+            if (window.STANDALONE_LEVEL) return window.STANDALONE_LEVEL;
+            try {
+                const p = new URLSearchParams(location.search).get('level');
+                if (p) return JSON.parse(decodeURIComponent(escape(atob(p))));
+            } catch (e) { console.error('Invalid challenge data', e); }
+            return null;
+        })();
+
+        // Positive finite number from the challenge, else the default.
+        function tuned(v, def) {
+            return (typeof v === 'number' && isFinite(v) && v > 0) ? v : def;
+        }
+
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
 
@@ -170,10 +187,13 @@
 
         const BLOCK_W = 72;          // every block is the same (squarish) size
         const BLOCK_H = 60;
-        const BASE_SPEED = 120;      // slide speed of the first block, px/sec
-        const SPEED_STEP = 32;       // added to slide speed after every drop
+        // Slide speed / tolerance defaults, tunable per custom challenge.
+        const BASE_SPEED = tuned(CHALLENGE && CHALLENGE.baseSpeed, 120);   // first block, px/sec
+        const SPEED_STEP = tuned(CHALLENGE && CHALLENGE.speedStep, 32);    // added after every drop
         const SPEED_MAX = 1000;      // cap so it stays (barely) playable
-        const PERFECT_TOL = 5;       // px tolerance for a "perfect" line-up
+        const PERFECT_TOL = tuned(CHALLENGE && CHALLENGE.perfectTol, 5);   // px tolerance for "perfect"
+        // Blocks to stack to win a challenge (0 = endless, the default game).
+        const TARGET_HEIGHT = CHALLENGE ? Math.floor(tuned(CHALLENGE.targetHeight, 0)) : 0;
         const MOVER_TOP_Y = 22;      // screen-space y the slider rides along at the top
         const FALL_GRAVITY = 1500;   // px/sec^2 while a dropped block falls
         const FALL_V0 = 80;          // initial downward speed on release
@@ -198,13 +218,35 @@
         ];
 
         const skinId = (function () {
-            const id = localStorage.getItem(SKIN_KEY);
+            const want = CHALLENGE && CHALLENGE.skin;
+            if (want && window.BlockSkins.get(want) && window.BlockSkins.get(want).id === want) {
+                return want;
+            }
+            let id = null;
+            try { id = localStorage.getItem(SKIN_KEY); } catch (e) {}
             return (id && window.BlockSkins.get(id) &&
                     window.BlockSkins.get(id).id === id) ? id : window.BlockSkins.list()[0].id;
         })();
 
         let best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10);
         bestVal.textContent = best;
+
+        // Challenge mode: repurpose the BEST pill as the GOAL and show the
+        // challenge name in the hint line.
+        if (TARGET_HEIGHT) {
+            bestVal.parentElement.querySelector('.stat-label').textContent = 'GOAL';
+            bestVal.textContent = TARGET_HEIGHT;
+            const hintEl = document.querySelector('.hint');
+            const nameEl = document.createElement('strong');
+            nameEl.textContent = (CHALLENGE.name || 'Challenge') + ' — ';
+            hintEl.textContent = 'stack ' + TARGET_HEIGHT + ' blocks to win! Tap the tower or hit Space to drop.';
+            hintEl.insertBefore(nameEl, hintEl.firstChild);
+            if (CHALLENGE.name) document.title = CHALLENGE.name + ' - Block Stacker';
+        }
+        // A standalone page has no menu to go back to.
+        if (window.STANDALONE_LEVEL) {
+            document.querySelectorAll('a[href="index.html"]').forEach(a => { a.style.display = 'none'; });
+        }
 
         /* ---------------------------------------------------------------
          * HiDPI canvas sizing
@@ -305,7 +347,26 @@
             stack.push({ x: x, index: stack.length });
             score++;
             updateHud();
+            if (TARGET_HEIGHT && score >= TARGET_HEIGHT) {
+                challengeWon();
+                return;
+            }
             spawnMover();
+        }
+
+        // Challenge mode: the goal height was reached — the tower is built!
+        function challengeWon() {
+            mover = null;
+            state = 'over';
+            updateHud();
+            // Trail mode: bank the result for the final overview page.
+            if (window.MinigameChain && MinigameChain.active) {
+                MinigameChain.report({ points: 100, stars: 3, native: { blocks: score } });
+            }
+            overTitle.textContent = (CHALLENGE && CHALLENGE.winTitle) || '🏆 Challenge Complete!';
+            overText.textContent = (CHALLENGE && CHALLENGE.winMessage) ||
+                ('You stacked all ' + TARGET_HEIGHT + ' blocks!');
+            setTimeout(() => overModal.classList.add('active'), 500);
         }
 
         // The active block missed: hand it to the debris system so it tumbles
@@ -334,10 +395,28 @@
             state = 'over';
             combo = 0;
             updateHud();
+            if (TARGET_HEIGHT) {
+                // Challenge mode: the GOAL pill replaces BEST, so no best-keeping.
+                overTitle.textContent = 'Tower Toppled!';
+                overText.innerHTML = 'You stacked <strong>' + score + '</strong> of <strong>' +
+                    TARGET_HEIGHT + '</strong> blocks. Try again!';
+                setTimeout(() => overModal.classList.add('active'), 700);
+                return;
+            }
+            // Trail mode without a goal height: an endless run still counts —
+            // every block is worth 5 points, capped at 100 (20+ blocks).
+            if (window.MinigameChain && MinigameChain.active && score > 0) {
+                const pts = Math.min(100, score * 5);
+                MinigameChain.report({
+                    points: pts,
+                    stars: pts >= 100 ? 3 : pts >= 50 ? 2 : 1,
+                    native: { blocks: score }
+                });
+            }
             const isBest = score > best;
             if (isBest) {
                 best = score;
-                localStorage.setItem(BEST_KEY, String(best));
+                try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
                 bestVal.textContent = best;
             }
             overTitle.textContent = isBest && score > 0 ? 'New Best! 🏆' : 'Tower Toppled!';

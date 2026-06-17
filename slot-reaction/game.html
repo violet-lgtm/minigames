@@ -8,6 +8,8 @@
     <title>Reaction Slots</title>
     <link rel="stylesheet" href="css/common.css">
     <script src="js/i18n.js"></script>
+    <script src="../shared/stqry-bridge.js"></script>
+    <script src="../shared/chain.js"></script>
     <style>
         .container {
             max-width: 720px;
@@ -298,6 +300,7 @@
         <div class="modal-content">
             <div class="win-message" id="resultTitle">Round Complete!</div>
             <div class="final-score"><span id="finalScore">0</span><span style="font-size:0.45em;color:var(--text-secondary)" data-i18n="pts"> pts</span></div>
+            <p id="customWinMsg" style="display:none;color:var(--good-color);font-weight:bold;margin:6px 0"></p>
             <ul class="breakdown" id="breakdown"></ul>
             <div id="newBest" data-i18n="newbest" style="color:var(--good-color);font-weight:bold;margin-bottom:10px;display:none">🏆 New best score!</div>
             <button class="btn btn-primary" id="playAgainBtn" data-i18n="modal_playagain">🔄 Play Again</button>
@@ -309,10 +312,25 @@
         'use strict';
 
         // ---- Configuration ----
-        const SYMBOLS = ['7️⃣', '🍒', '🔔', '⭐', '🍋', '💎', '🍉'];
-        const TARGET_INDEX = 0;          // index of the symbol you must stop on
+        // Custom round: baked into a standalone page, or carried in ?level=
+        const CUSTOM = (function () {
+            if (window.STANDALONE_LEVEL) return window.STANDALONE_LEVEL;
+            try {
+                const p = new URLSearchParams(location.search).get('level');
+                if (p) return JSON.parse(decodeURIComponent(escape(atob(p))));
+            } catch (e) { console.error('Invalid custom round data', e); }
+            return null;
+        })();
+
+        const SYMBOLS = (CUSTOM && Array.isArray(CUSTOM.symbols) && CUSTOM.symbols.length >= 3)
+            ? CUSTOM.symbols.slice(0, 12).map(String)
+            : ['7️⃣', '🍒', '🔔', '⭐', '🍋', '💎', '🍉'];
+        // index of the symbol you must stop on
+        const TARGET_INDEX = (CUSTOM && Number.isInteger(CUSTOM.targetIndex) &&
+            CUSTOM.targetIndex >= 0 && CUSTOM.targetIndex < SYMBOLS.length) ? CUSTOM.targetIndex : 0;
         const TARGET_SYMBOL = SYMBOLS[TARGET_INDEX];
-        const NUM_REELS = 3;
+        const NUM_REELS = (CUSTOM && Number.isInteger(CUSTOM.reels) &&
+            CUSTOM.reels >= 1 && CUSTOM.reels <= 6) ? CUSTOM.reels : 3;
         const CYCLES = 3;                // how many full symbol sequences are stacked in the strip
         const BEST_KEY = 'reactionSlots.best';
 
@@ -322,7 +340,9 @@
         // Each reel spins faster than the last (px per millisecond).
         // Eased off the top end: the final reel now runs at the old middle speed
         // (0.78) and the middle reel gets a new, gentler difficulty (0.66).
-        const SPEEDS = [0.55, 0.66, 0.78];
+        const SPEEDS = (CUSTOM && Array.isArray(CUSTOM.speeds) && CUSTOM.speeds.length)
+            ? CUSTOM.speeds.map(v => Math.max(0.2, Math.min(2, Number(v) || 0.6)))
+            : [0.55, 0.66, 0.78];
 
         // When the GOAL symbol lands on the payline, how centred it is decides the tier.
         // Absolute alignment error (px) -> tier. Scaled by CELL at runtime.
@@ -370,7 +390,15 @@
         const reelProgress = document.getElementById('reelProgress');
         const targetBanner = document.getElementById('targetBanner');
         const hintEl = document.getElementById('hint');
-        const feedbackCells = Array.from(document.getElementById('feedbackRow').children);
+        // Build one feedback cell per reel (the round may not use exactly 3).
+        const feedbackRow = document.getElementById('feedbackRow');
+        feedbackRow.innerHTML = '';
+        for (let i = 0; i < NUM_REELS; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'feedback-cell';
+            feedbackRow.appendChild(cell);
+        }
+        const feedbackCells = Array.from(feedbackRow.children);
         const resultModal = document.getElementById('resultModal');
         const finalScoreEl = document.getElementById('finalScore');
         const breakdownEl = document.getElementById('breakdown');
@@ -378,6 +406,17 @@
         const resultTitle = document.getElementById('resultTitle');
 
         bestVal.textContent = best == null ? '–' : best;
+        reelProgress.textContent = '0 / ' + NUM_REELS;
+
+        // Custom round chrome: show its name, and keep the local best for the
+        // standard game only (a custom round is scored on a different scale).
+        if (CUSTOM) {
+            if (CUSTOM.name) {
+                document.querySelector('header h1').textContent = '🎰 ' + CUSTOM.name;
+                document.title = CUSTOM.name + ' - Reaction Slots';
+            }
+            bestVal.textContent = '–';
+        }
 
         function setBtn() { stopBtn.textContent = t('btn_' + btnState); }
 
@@ -637,7 +676,7 @@
             const finalScore = baseScore * multiplier;
 
             let isBest = false;
-            if (best == null || finalScore > best) {
+            if (!CUSTOM && (best == null || finalScore > best)) {
                 best = finalScore;
                 saveBest(best);
                 bestVal.textContent = best;
@@ -646,6 +685,17 @@
 
             const flawless = hits === NUM_REELS && baseScore === HIT_RATINGS[0].points * NUM_REELS;
             lastResult = { perReel, hits, multiplier, finalScore, isBest, flawless };
+
+            // Trail mode: bank the result for the final overview page (best
+            // round wins, so playing again can only improve the score).
+            if (window.MinigameChain && MinigameChain.active) {
+                const maxPossible = HIT_RATINGS[0].points * NUM_REELS * comboMultiplier(NUM_REELS);
+                MinigameChain.report({
+                    points: Math.round(finalScore / maxPossible * 100),
+                    stars: hits === NUM_REELS ? 3 : hits > 0 ? 2 : 1,
+                    native: { score: finalScore, hits, reels: NUM_REELS }
+                });
+            }
 
             renderResults();
             setTimeout(() => resultModal.classList.add('active'), 650);
@@ -680,6 +730,15 @@
 
             finalScoreEl.textContent = finalScore;
             newBestEl.style.display = isBest ? 'block' : 'none';
+
+            // Creator-supplied win message, shown when every reel hit the goal.
+            const customMsg = document.getElementById('customWinMsg');
+            if (CUSTOM && CUSTOM.winMessage && hits === NUM_REELS) {
+                customMsg.textContent = CUSTOM.winMessage;
+                customMsg.style.display = 'block';
+            } else {
+                customMsg.style.display = 'none';
+            }
 
             resultTitle.textContent =
                 flawless ? t('title_jackpot')

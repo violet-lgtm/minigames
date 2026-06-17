@@ -2,6 +2,49 @@
 
 A collection of interactive browser-based mini games for stqry integration.
 
+## 🧩 Custom Levels & Standalone Pages
+
+Every game has a level creator, and every created level can be exported as a
+**standalone web page**: a single self-contained HTML file (game + level baked
+in) that can be hosted anywhere on its own — independent of this site.
+
+- **Wire Puzzle / Mastermind** — full level editors (`editor.html`)
+- **Truck Jam** — visual yard editor with a built-in solvability check (`editor.html`)
+- **Block Stacker** — challenge creator: goal height, speeds, skin, win message (`editor.html`)
+- **Reaction Slots** — round designer: your own symbols, reels and speeds (`editor.html`)
+- **Paper Puzzle** — custom puzzle creator from any image (`custom.html`)
+
+Each creator offers **🔗 Copy Share Link** (plays on this site) and
+**📦 Download Standalone Page** (a single `.html` file you can upload to any
+web server or CMS as its own page). The export bundles the game's CSS and
+JavaScript and the level data into one file, so it needs no other assets.
+
+## 🧭 Trails: string games together with a final score overview
+
+The [Trail Builder](trail/builder.html) chains any mix of minigames (built-in
+levels, presets, or pasted editor share-links) into a **trail** and generates:
+
+- **one link per game** — opening it (e.g. from a stqry screen or QR code)
+  drops the player straight into that game with the trail attached. A trail
+  bar shows progress and an in-game scores overlay.
+- **an overview link** (`trail/results.html`) — live progress, per-game
+  points/stars/stats, the running total, and a celebration screen with a
+  final score once every game is done.
+- **a standalone trail** (📦 Download Standalone Trail) — ONE self-contained
+  HTML file with the hub and every game embedded, hostable anywhere on its
+  own. Games run in iframes whose stqry bridges hand their storage calls to
+  the hub, which persists them via its own bridge (`shared/trail-standalone.js`).
+
+Trails can be played **in any order** (every link works any time) or in a
+**set order** (games stay locked until the previous one is finished).
+
+Scores are saved through `shared/stqry-bridge.js` (the STQRY storage bridge
+from [maxdammers/cookietest](https://github.com/maxdammers/cookietest)): it
+uses `stqry.storage` over `postMessage` inside the stqry app's WebView and
+falls back to `localStorage` in a normal browser, so trails work identically
+in the app and on the web. Games report a normalised 0–100 score plus 1–3
+stars on their win screen (`shared/chain.js`); replaying keeps the best.
+
 ## 🌐 Live Demo
 
 Once GitHub Pages is enabled, the games will be available at:
@@ -46,6 +89,7 @@ A reaction-time test disguised as a slot machine — stop each of three spinning
 - Tracks your best score locally
 - Available in English, Dutch and German with an in-game language picker
 - Play with a tap, click, or the spacebar
+- Round designer: choose your own symbols, goal, reel count and speeds, then share a link or export a standalone page
 
 **Play:** [Reaction Slots](slot-reaction/index.html)
 
@@ -61,6 +105,7 @@ A timing game where a square block slides back and forth at the very top of the 
 - Missed blocks tumble past the tower with a little physics flourish
 - Swappable block styles (Spectrum, Sunset, Ocean, Slate, Candy) with a simple registry for adding your own
 - Tracks your best height locally
+- Challenge creator: set a goal height, speeds, block style and win message, then share a link or export a standalone page
 
 **Play:** [Block Stacker](block-stack/index.html)
 
@@ -76,6 +121,7 @@ A "parking slide" puzzle (the Rush Hour family) themed with cab-over European lo
 - Three-star scoring that rewards matching each yard's optimal "par"
 - Stuck? The same solver powers a hint that shows your next move
 - Tracks your best move count per yard locally and remembers cleared yards
+- Yard editor: lay out your own jam, with the solver verifying it and setting par; share a link or export a standalone page
 
 **Play:** [Truck Jam](truck-jam/index.html)
 
@@ -96,6 +142,13 @@ minigames/
 ├── .github/
 │   └── workflows/
 │       └── deploy-pages.yml  # GitHub Pages deployment
+├── shared/
+│   ├── standalone.js         # Standalone-page exporter used by all level editors
+│   ├── stqry-bridge.js       # STQRY storage bridge (localStorage/postMessage/WebView)
+│   └── chain.js              # Trail runtime: score saving + progress bar in each game
+├── trail/
+│   ├── builder.html          # Chain games into a trail, generate the links
+│   └── results.html          # Live overview + final score page
 └── wire-puzzle/              # Wire Puzzle game
     ├── index.html            # Game menu
     ├── game.html            # Game player

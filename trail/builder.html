@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trail Builder - Minigames</title>
+    <script src="../truck-jam/js/core/engine.js"></script>
+    <script src="../truck-jam/js/core/levels.js"></script>
+    <style>
+        :root {
+            --accent: #f6b62e;
+            --accent-strong: #e2a31c;
+            --surface: #ffffff;
+            --surface-border: #e7e7e7;
+            --text-primary: #1a1a1a;
+            --text-secondary: #5e5e5e;
+            --good-color: #2e9e4f;
+            --miss-color: #d9534f;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f4f4f6;
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px 14px 40px;
+        }
+        .wrap { max-width: 640px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 16px; }
+        header h1 { font-size: 1.5em; }
+        header p { color: var(--text-secondary); margin-top: 4px; font-size: 0.92em; }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        .panel h2 { font-size: 1.0em; margin-bottom: 10px; }
+
+        label { font-size: 0.82em; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 4px; }
+        input[type="text"], select {
+            width: 100%;
+            border: 1px solid var(--surface-border);
+            border-radius: 10px;
+            padding: 9px 12px;
+            font: inherit;
+            background: var(--surface);
+        }
+        .row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 10px; flex-wrap: wrap; }
+        .row > div { flex: 1; min-width: 140px; }
+
+        .mode-row { display: flex; gap: 14px; margin-top: 4px; }
+        .mode-row label { display: flex; align-items: center; gap: 6px; font-size: 0.95em; color: var(--text-primary); font-weight: 600; cursor: pointer; }
+
+        .btn {
+            display: inline-block;
+            border: 0;
+            border-radius: 10px;
+            padding: 9px 16px;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            background: var(--accent);
+            color: #1a1a1a;
+            white-space: nowrap;
+        }
+        .btn:hover { background: var(--accent-strong); }
+        .btn-ghost { background: #ececec; }
+        .btn-ghost:hover { background: #ddd; }
+        .btn-sm { padding: 6px 10px; font-size: 0.85em; }
+
+        .trail-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fafafa;
+            border: 1px solid var(--surface-border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+        .trail-item .num { font-weight: 800; color: var(--text-secondary); width: 22px; }
+        .trail-item .info { flex: 1; min-width: 0; }
+        .trail-item .name { font-weight: 800; }
+        .trail-item .lvl { font-size: 0.8em; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .empty-note { color: var(--text-secondary); font-size: 0.9em; text-align: center; padding: 10px; }
+
+        .links-out { display: none; }
+        .links-out.visible { display: block; }
+        .link-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .link-row .lbl { font-weight: 700; width: 150px; flex-shrink: 0; font-size: 0.9em; }
+        .link-row .url {
+            flex: 1;
+            font-family: monospace;
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            background: #fafafa;
+            border: 1px solid var(--surface-border);
+            border-radius: 8px;
+            padding: 7px 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .hint { font-size: 0.82em; color: var(--text-secondary); margin-top: 8px; line-height: 1.5; }
+        .err { color: var(--miss-color); font-size: 0.85em; font-weight: 700; min-height: 1.2em; margin-top: 6px; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header>
+            <h1>🧭 Trail Builder</h1>
+            <p>String minigames together — every game saves its score for one final overview</p>
+        </header>
+
+        <div class="panel">
+            <h2>1. Trail settings</h2>
+            <div class="row">
+                <div>
+                    <label for="trailTitle">Trail name</label>
+                    <input type="text" id="trailTitle" maxlength="48" value="Minigame Trail">
+                </div>
+            </div>
+            <label>Play order</label>
+            <div class="mode-row">
+                <label><input type="radio" name="mode" value="free" checked> 🔀 Any order</label>
+                <label><input type="radio" name="mode" value="ordered"> ➡️ Set order (locked until previous is done)</label>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>2. Add games</h2>
+            <div class="row">
+                <div>
+                    <label for="gameSelect">Game</label>
+                    <select id="gameSelect"></select>
+                </div>
+                <div>
+                    <label for="levelSelect">Level / preset</label>
+                    <select id="levelSelect"></select>
+                </div>
+                <button class="btn" id="addBtn">+ Add</button>
+            </div>
+            <div class="row">
+                <div style="flex:3">
+                    <label for="customLink">…or paste a share link from any game's level editor</label>
+                    <input type="text" id="customLink" placeholder="https://…/truck-jam/game.html?custom=…">
+                </div>
+                <button class="btn btn-ghost" id="addCustomBtn">+ Add custom</button>
+            </div>
+            <div class="err" id="addErr"></div>
+        </div>
+
+        <div class="panel">
+            <h2>3. Your trail</h2>
+            <div id="trailList"><p class="empty-note">No games added yet.</p></div>
+        </div>
+
+        <div class="panel">
+            <div class="row" style="margin-bottom:0">
+                <button class="btn" id="generateBtn" style="flex:1">🔗 Generate Links</button>
+                <button class="btn btn-ghost" id="standaloneTrailBtn" style="flex:1">📦 Download Standalone Trail</button>
+            </div>
+            <p class="hint">
+                <strong>📦 Standalone trail:</strong> one self-contained HTML file with the hub
+                and every game inside — host it anywhere on its own (a web server, a stqry
+                screen upload) with no other files needed.
+            </p>
+            <div class="links-out" id="linksOut">
+                <div style="margin-top:14px" id="linkRows"></div>
+                <p class="hint">
+                    <strong>In stqry:</strong> create a screen (or QR code) per game link —
+                    opening it drops the visitor straight into that game with the trail attached.
+                    The <strong>overview link</strong> is the final-score page; it also lists and
+                    links every game, so for an "any order" trail it can even be the only link
+                    you hand out. Scores are saved through the stqry storage bridge, so they
+                    survive navigation between screens in the app.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { builtInLevels as wireLevels } from '../wire-puzzle/js/core/levels.js';
+        import { builtInLevels as mmLevels } from '../mastermind/js/core/levels.js';
+        import { LEVELS as paperLevels } from '../paper-puzzle/js/core/levels.js';
+        import { downloadPage, pageFileName } from '../shared/standalone.js';
+        import { buildTrailPage } from '../shared/trail-standalone.js';
+
+        const $ = id => document.getElementById(id);
+
+        // JSON that is pure ASCII, so btoa() works and every game's own decoder
+        // (plain atob or the URI-escape variant) reads it back identically.
+        function asciiJson(obj) {
+            return JSON.stringify(obj).replace(/[\u0080-\uffff]/g,
+                c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+        }
+        const b64 = obj => btoa(asciiJson(obj));
+
+        // ---- the game catalogue ----
+        // Each option yields a url (relative to the repo root, for hosted
+        // links) and the level payload itself (baked into standalone trails).
+        const slotPresets = [
+            null,
+            { name: 'Fast Four', reels: 4, speeds: [0.55, 0.66, 0.78, 0.9] },
+            { name: 'Frenzy', reels: 5, speeds: [0.6, 0.72, 0.84, 0.96, 1.1] },
+        ];
+        const blockPresets = [
+            { name: 'Stack 8', targetHeight: 8 },
+            { name: 'Stack 12', targetHeight: 12, baseSpeed: 140 },
+            { name: 'Stack 20', targetHeight: 20, baseSpeed: 150, speedStep: 40 },
+            null,
+        ];
+        const CATALOGUE = {
+            'truck-jam': {
+                name: 'Truck Jam',
+                options: window.TruckJamLevels.map(l => ({
+                    label: l.name + ' (par ' + l.par + ')',
+                    url: 'truck-jam/game.html?level=' + l.id,
+                    level: l,
+                })),
+            },
+            'wire-puzzle': {
+                name: 'Wire Puzzle',
+                options: wireLevels.map(l => ({
+                    label: l.name + ' (' + (l.difficulty || 'easy') + ')',
+                    url: 'wire-puzzle/game.html?level=' + encodeURIComponent(b64(l)),
+                    level: l,
+                })),
+            },
+            'mastermind': {
+                name: 'Mastermind',
+                options: mmLevels.map(l => ({
+                    label: l.name + ' (' + (l.difficulty || 'easy') + ')',
+                    url: 'mastermind/game.html?level=' + encodeURIComponent(b64(l)),
+                    level: l,
+                })),
+            },
+            'paper-puzzle': {
+                name: 'Paper Puzzle',
+                options: paperLevels.map((l, i) => ({
+                    label: l.name + ' (' + (l.difficulty || 'easy') + ')',
+                    url: 'paper-puzzle/game.html?level=' + (i + 1),
+                    level: { builtin: i + 1 },
+                })),
+            },
+            'slot-reaction': {
+                name: 'Reaction Slots',
+                options: ['Classic (3 reels)', 'Fast Four (4 reels)', 'Frenzy (5 reels)'].map((label, i) => ({
+                    label,
+                    url: 'slot-reaction/game.html' +
+                        (slotPresets[i] ? '?level=' + encodeURIComponent(b64(slotPresets[i])) : ''),
+                    level: slotPresets[i],
+                })),
+            },
+            'block-stack': {
+                name: 'Block Stacker',
+                options: ['Goal: 8 blocks (easy)', 'Goal: 12 blocks (medium)',
+                          'Goal: 20 blocks (hard)', 'Endless (5 pts per block)'].map((label, i) => ({
+                    label,
+                    url: 'block-stack/game.html' +
+                        (blockPresets[i] ? '?level=' + encodeURIComponent(b64(blockPresets[i])) : ''),
+                    level: blockPresets[i],
+                })),
+            },
+        };
+
+        // ---- decode the level payload out of a pasted editor share link ----
+        function tryB64Json(s) {
+            try { return JSON.parse(decodeURIComponent(escape(atob(s)))); } catch (e) { /* next */ }
+            return JSON.parse(atob(s)); // wire-puzzle's plain-btoa links
+        }
+
+        function decodePastedLevel(slug, rest) {
+            // rest = 'game.html?...' and/or '#...'
+            const hPos = rest.indexOf('#');
+            const hash = hPos !== -1 ? rest.slice(hPos + 1) : '';
+            const query = rest.slice(rest.indexOf('?') + 1, hPos !== -1 ? hPos : undefined);
+            const params = new URLSearchParams(rest.indexOf('?') !== -1 ? query : '');
+
+            const hashCustom = hash.match(/^custom=(.+)$/); // paper-puzzle b64url
+            if (hashCustom) {
+                let b = hashCustom[1].replace(/-/g, '+').replace(/_/g, '/');
+                while (b.length % 4) b += '=';
+                return tryB64Json(b);
+            }
+            if (params.get('custom')) return tryB64Json(params.get('custom')); // truck-jam editor
+            const lvl = params.get('level');
+            if (lvl) {
+                if (slug === 'paper-puzzle' && /^\d+$/.test(lvl)) return { builtin: +lvl };
+                if (slug === 'truck-jam') {
+                    const builtin = window.TruckJamLevels.find(l => l.id === lvl);
+                    if (builtin) return builtin;
+                }
+                return tryB64Json(lvl);
+            }
+            return null; // no level params: the game's own defaults
+        }
+
+        // ---- pickers ----
+        const gameSelect = $('gameSelect');
+        const levelSelect = $('levelSelect');
+        for (const [slug, g] of Object.entries(CATALOGUE)) {
+            gameSelect.appendChild(new Option(g.name, slug));
+        }
+        function fillLevels() {
+            levelSelect.innerHTML = '';
+            CATALOGUE[gameSelect.value].options.forEach((opt, i) =>
+                levelSelect.appendChild(new Option(opt.label, i)));
+        }
+        gameSelect.addEventListener('change', fillLevels);
+        fillLevels();
+
+        // ---- the trail being built ----
+        let trail = []; // { slug, name, label, url }
+
+        function renderTrail() {
+            const list = $('trailList');
+            list.innerHTML = '';
+            if (!trail.length) {
+                list.innerHTML = '<p class="empty-note">No games added yet.</p>';
+                return;
+            }
+            trail.forEach((item, i) => {
+                const row = document.createElement('div');
+                row.className = 'trail-item';
+                const num = document.createElement('span');
+                num.className = 'num';
+                num.textContent = (i + 1) + '.';
+                row.appendChild(num);
+                const info = document.createElement('div');
+                info.className = 'info';
+                info.innerHTML = '<div class="name"></div><div class="lvl"></div>';
+                info.querySelector('.name').textContent = item.name;
+                info.querySelector('.lvl').textContent = item.label;
+                row.appendChild(info);
+                const up = document.createElement('button');
+                up.className = 'btn btn-ghost btn-sm';
+                up.textContent = '↑';
+                up.disabled = i === 0;
+                up.addEventListener('click', () => {
+                    [trail[i - 1], trail[i]] = [trail[i], trail[i - 1]];
+                    renderTrail();
+                });
+                const down = document.createElement('button');
+                down.className = 'btn btn-ghost btn-sm';
+                down.textContent = '↓';
+                down.disabled = i === trail.length - 1;
+                down.addEventListener('click', () => {
+                    [trail[i + 1], trail[i]] = [trail[i], trail[i + 1]];
+                    renderTrail();
+                });
+                const del = document.createElement('button');
+                del.className = 'btn btn-ghost btn-sm';
+                del.textContent = '✕';
+                del.addEventListener('click', () => {
+                    trail.splice(i, 1);
+                    renderTrail();
+                });
+                row.appendChild(up);
+                row.appendChild(down);
+                row.appendChild(del);
+                list.appendChild(row);
+            });
+        }
+
+        $('addBtn').addEventListener('click', () => {
+            $('addErr').textContent = '';
+            const slug = gameSelect.value;
+            const opt = CATALOGUE[slug].options[+levelSelect.value];
+            trail.push({ slug, name: CATALOGUE[slug].name, label: opt.label, url: opt.url, level: opt.level });
+            renderTrail();
+        });
+
+        $('addCustomBtn').addEventListener('click', () => {
+            $('addErr').textContent = '';
+            const raw = $('customLink').value.trim();
+            const m = raw.match(/(?:^|\/)([\w-]+)\/(game\.html(?:[?#].*)?)$/);
+            const slug = m && m[1];
+            if (!slug || !CATALOGUE[slug]) {
+                $('addErr').textContent = 'Could not recognise that link — paste a share link that points at a game.html page.';
+                return;
+            }
+            let level = null;
+            let levelError = false;
+            try {
+                level = decodePastedLevel(slug, m[2]);
+            } catch (e) {
+                levelError = true; // hosted links still work; standalone embed won't
+            }
+            trail.push({
+                slug,
+                name: CATALOGUE[slug].name,
+                label: 'Custom level (pasted link)' + (levelError ? ' — ⚠ link-only' : ''),
+                url: slug + '/' + m[2],
+                level,
+                levelError,
+            });
+            $('customLink').value = '';
+            renderTrail();
+        });
+
+        // ---- link generation ----
+        function buildGameLink(rootUrl, trailB64, games, i) {
+            let url = games[i].url;
+            let hash = '';
+            const hashPos = url.indexOf('#');
+            if (hashPos !== -1) { hash = url.slice(hashPos); url = url.slice(0, hashPos); }
+            const sep = url.indexOf('?') === -1 ? '?' : '&';
+            return rootUrl + url + sep + 'trail=' + encodeURIComponent(trailB64) + '&g=' + i + hash;
+        }
+
+        function linkRow(label, url) {
+            const row = document.createElement('div');
+            row.className = 'link-row';
+            const lbl = document.createElement('span');
+            lbl.className = 'lbl';
+            lbl.textContent = label;
+            const box = document.createElement('span');
+            box.className = 'url';
+            box.textContent = url;
+            const copy = document.createElement('button');
+            copy.className = 'btn btn-ghost btn-sm';
+            copy.textContent = 'Copy';
+            copy.addEventListener('click', () => {
+                navigator.clipboard.writeText(url).then(() => {
+                    copy.textContent = '✓';
+                    setTimeout(() => { copy.textContent = 'Copy'; }, 1500);
+                }, () => prompt('Copy this link:', url));
+            });
+            row.appendChild(lbl);
+            row.appendChild(box);
+            row.appendChild(copy);
+            return row;
+        }
+
+        function makeDef() {
+            return {
+                v: 1,
+                id: 'tr-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                title: $('trailTitle').value.trim() || 'Minigame Trail',
+                mode: document.querySelector('input[name="mode"]:checked').value,
+                games: trail.map(t => ({ slug: t.slug, name: t.name, url: t.url })),
+            };
+        }
+
+        function requireTrail() {
+            $('addErr').textContent = '';
+            if (trail.length < 2) {
+                $('addErr').textContent = 'Add at least two games to make a trail.';
+                return false;
+            }
+            return true;
+        }
+
+        $('generateBtn').addEventListener('click', () => {
+            if (!requireTrail()) return;
+            const def = makeDef();
+            const trailB64 = b64(def);
+            const rootUrl = new URL('..', window.location.href).href;
+
+            const rows = $('linkRows');
+            rows.innerHTML = '';
+            rows.appendChild(linkRow('🏁 Overview / final score',
+                rootUrl + 'trail/results.html?trail=' + encodeURIComponent(trailB64)));
+            def.games.forEach((g, i) => {
+                rows.appendChild(linkRow((i + 1) + '. ' + g.name,
+                    buildGameLink(rootUrl, trailB64, def.games, i)));
+            });
+            $('linksOut').classList.add('visible');
+        });
+
+        // ---- standalone trail: one self-contained HTML file ----
+        $('standaloneTrailBtn').addEventListener('click', async () => {
+            if (!requireTrail()) return;
+            const bad = trail.filter(t => t.levelError);
+            if (bad.length) {
+                $('addErr').textContent = 'Cannot embed ' +
+                    bad.map(t => t.name).join(', ') +
+                    ' — that pasted link could not be decoded. Remove it or re-paste a fresh editor share link.';
+                return;
+            }
+            const btn = $('standaloneTrailBtn');
+            const orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ Building…';
+            try {
+                const def = makeDef();
+                const html = await buildTrailPage({ def, levels: trail.map(t => t.level || null) });
+                downloadPage(pageFileName(def.title + ' trail'), html);
+                alert('Standalone trail downloaded!\n\nThe single file contains the hub and every game — ' +
+                    'host it anywhere (any web server, a stqry screen upload…) and it works on its own. ' +
+                    'Scores are saved on the device, or through the stqry app when hosted in its WebView.');
+            } catch (err) {
+                alert('Could not build the standalone trail: ' + err.message +
+                    '\n\nNote: this feature needs the site to be served over HTTP(S).');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = orig;
+            }
+        });
+    </script>
+</body>
+</html>

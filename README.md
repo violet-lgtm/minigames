@@ -26,14 +26,22 @@ levels, presets, or pasted editor share-links) into a **trail** and generates:
 
 - **one link per game** — opening it (e.g. from a stqry screen or QR code)
   drops the player straight into that game with the trail attached. A trail
-  bar shows progress and an in-game scores overlay.
+  bar shows progress and an in-game scores overlay. Custom puzzle photos are
+  kept out of the link: the builder extracts them to `trail/assets/` (offered
+  as a small zip to commit) and the link references them by path, so every
+  game's sub-URL stays short.
 - **an overview link** (`trail/results.html`) — live progress, per-game
   points/stars/stats, the running total, and a celebration screen with a
   final score once every game is done.
-- **a standalone trail** (📦 Download Standalone Trail) — ONE self-contained
-  HTML file with the hub and every game embedded, hostable anywhere on its
-  own. Games run in iframes whose stqry bridges hand their storage calls to
-  the hub, which persists them via its own bridge (`shared/trail-standalone.js`).
+- **a standalone trail** (📦 Download Trail (.zip)) — a zip containing a
+  folder of separate, independently-hostable pages: `index.html` (the
+  overview/final score) plus one self-contained HTML file per game, with any
+  images written as their own compressed files under `assets/` (no base64
+  inflation). Host the folder anywhere, or upload each page as its own stqry
+  screen/link. Pages share scores through the stqry storage bridge — same
+  origin over HTTP, or the app's storage inside its WebView — and navigate
+  via ordinary links baked into each page (`shared/trail-standalone.js`,
+  zipped with `shared/zip.js`).
 
 Trails can be played **in any order** (every link works any time) or in a
 **set order** (games stay locked until the previous one is finished).
@@ -145,10 +153,12 @@ minigames/
 ├── shared/
 │   ├── standalone.js         # Standalone-page exporter used by all level editors
 │   ├── stqry-bridge.js       # STQRY storage bridge (localStorage/postMessage/WebView)
-│   └── chain.js              # Trail runtime: score saving + progress bar in each game
+│   ├── chain.js              # Trail runtime: score saving + progress bar in each game
+│   ├── trail-standalone.js   # Builds a downloadable multi-file trail (hub + pages + assets)
+│   └── zip.js                # Tiny dependency-free ZIP writer (store method)
 ├── trail/
-│   ├── builder.html          # Chain games into a trail, generate the links
-│   └── results.html          # Live overview + final score page
+│   ├── builder.html          # Chain games into a trail; hosted links or downloadable zip
+│   └── results.html          # Live overview + final score page (hosted links)
 └── wire-puzzle/              # Wire Puzzle game
     ├── index.html            # Game menu
     ├── game.html            # Game player

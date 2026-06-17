@@ -168,22 +168,29 @@
         <div class="panel">
             <div class="row" style="margin-bottom:0">
                 <button class="btn" id="generateBtn" style="flex:1">🔗 Generate Links</button>
-                <button class="btn btn-ghost" id="standaloneTrailBtn" style="flex:1">📦 Download Standalone Trail</button>
+                <button class="btn btn-ghost" id="standaloneTrailBtn" style="flex:1">📦 Download Trail (.zip)</button>
             </div>
             <p class="hint">
-                <strong>📦 Standalone trail:</strong> one self-contained HTML file with the hub
-                and every game inside — host it anywhere on its own (a web server, a stqry
-                screen upload) with no other files needed.
+                <strong>📦 Standalone trail:</strong> a zip containing a folder of separate pages —
+                <code>index.html</code> (the overview) and one HTML file per game, with images
+                kept as their own files. Each page can be hosted behind its own link (or uploaded
+                as a stqry screen); scores are shared across them via the stqry storage bridge.
             </p>
             <div class="links-out" id="linksOut">
                 <div style="margin-top:14px" id="linkRows"></div>
+                <div id="assetsOut" style="display:none;margin-top:12px;padding:12px;border:1px solid var(--surface-border);border-radius:10px;background:#fafafa;">
+                    <p class="hint" id="assetsNote" style="margin-top:0"></p>
+                    <button class="btn btn-sm" id="assetsDlBtn">⬇ Download image assets (.zip)</button>
+                </div>
                 <p class="hint">
                     <strong>In stqry:</strong> create a screen (or QR code) per game link —
                     opening it drops the visitor straight into that game with the trail attached.
                     The <strong>overview link</strong> is the final-score page; it also lists and
                     links every game, so for an "any order" trail it can even be the only link
                     you hand out. Scores are saved through the stqry storage bridge, so they
-                    survive navigation between screens in the app.
+                    survive navigation between screens in the app. Custom photos are kept out of
+                    the links as files under <code>trail/assets/</code> — unzip them into the repo
+                    root and commit, so every link stays short.
                 </p>
             </div>
         </div>
@@ -193,8 +200,8 @@
         import { builtInLevels as wireLevels } from '../wire-puzzle/js/core/levels.js';
         import { builtInLevels as mmLevels } from '../mastermind/js/core/levels.js';
         import { LEVELS as paperLevels } from '../paper-puzzle/js/core/levels.js';
-        import { downloadPage, pageFileName } from '../shared/standalone.js';
-        import { buildTrailPage } from '../shared/trail-standalone.js';
+        import { buildTrailFiles } from '../shared/trail-standalone.js';
+        import { zipSync, downloadBytes } from '../shared/zip.js';
 
         const $ = id => document.getElementById(id);
 
@@ -205,6 +212,33 @@
                 c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
         }
         const b64 = obj => btoa(asciiJson(obj));
+
+        // ---- efficient image handling for hosted links (Option A) ----
+        // Custom images (paper-puzzle photos) are pulled out of the link into a
+        // committed asset file and referenced by a relative path, so each game
+        // keeps its own short sub-URL instead of carrying base64 image bytes.
+        const EXT_BY_MIME = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
+
+        function decodeDataUrl(dataUrl) {
+            if (typeof dataUrl !== 'string' || dataUrl.slice(0, 5) !== 'data:') return null;
+            const comma = dataUrl.indexOf(',');
+            if (comma === -1 || dataUrl.lastIndexOf(';base64', comma) === -1) return null;
+            const mime = dataUrl.slice(5, dataUrl.indexOf(';'));
+            const bin = atob(dataUrl.slice(comma + 1));
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            return { bytes, ext: EXT_BY_MIME[mime] || 'img' };
+        }
+
+        // Re-encode a paper-puzzle level into its #custom= URL (matches the
+        // game's own b64url decoder).
+        function paperCustomUrl(level) {
+            const bytes = new TextEncoder().encode(JSON.stringify(level));
+            let bin = '';
+            for (const b of bytes) bin += String.fromCharCode(b);
+            const enc = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            return 'paper-puzzle/game.html#custom=' + enc;
+        }
 
         // ---- the game catalogue ----
         // Each option yields a url (relative to the repo root, for hosted
@@ -462,9 +496,29 @@
             return true;
         }
 
+        // Pull any base64 images out of the games' links into asset files and
+        // rewrite those games to reference them by relative path. Mutates
+        // def.games[i].url; returns the list of { name, bytes } assets.
+        function externalizeImages(def) {
+            const assets = [];
+            def.games.forEach((g, i) => {
+                const lvl = trail[i] && trail[i].level;
+                if (!lvl || !lvl.img) return;
+                const dec = decodeDataUrl(lvl.img);
+                if (!dec) return; // already a path, or undecodable — leave as-is
+                const name = def.id + '-' + (i + 1) + '.' + dec.ext;
+                assets.push({ name: 'trail/assets/' + name, bytes: dec.bytes });
+                // reference the committed file by a path relative to a game page
+                const newLevel = Object.assign({}, lvl, { img: '../trail/assets/' + name });
+                if (g.slug === 'paper-puzzle') g.url = paperCustomUrl(newLevel);
+            });
+            return assets;
+        }
+
         $('generateBtn').addEventListener('click', () => {
             if (!requireTrail()) return;
             const def = makeDef();
+            const assets = externalizeImages(def); // image bytes leave the links
             const trailB64 = b64(def);
             const rootUrl = new URL('..', window.location.href).href;
 
@@ -476,10 +530,25 @@
                 rows.appendChild(linkRow((i + 1) + '. ' + g.name,
                     buildGameLink(rootUrl, trailB64, def.games, i)));
             });
+
+            // If photos were extracted, offer the asset files to publish.
+            const assetsOut = $('assetsOut');
+            if (assets.length) {
+                $('assetsNote').textContent =
+                    assets.length + ' image' + (assets.length === 1 ? '' : 's') +
+                    ' kept out of the links. Download and commit ' +
+                    (assets.length === 1 ? 'it' : 'them') + ' to trail/assets/ for the links to work.';
+                const dlBtn = $('assetsDlBtn');
+                dlBtn.onclick = () => downloadBytes(def.id + '-assets.zip',
+                    zipSync(assets), 'application/zip');
+                assetsOut.style.display = 'block';
+            } else {
+                assetsOut.style.display = 'none';
+            }
             $('linksOut').classList.add('visible');
         });
 
-        // ---- standalone trail: one self-contained HTML file ----
+        // ---- standalone trail: a zip of independently-hostable pages ----
         $('standaloneTrailBtn').addEventListener('click', async () => {
             if (!requireTrail()) return;
             const bad = trail.filter(t => t.levelError);
@@ -495,11 +564,13 @@
             btn.textContent = '⏳ Building…';
             try {
                 const def = makeDef();
-                const html = await buildTrailPage({ def, levels: trail.map(t => t.level || null) });
-                downloadPage(pageFileName(def.title + ' trail'), html);
-                alert('Standalone trail downloaded!\n\nThe single file contains the hub and every game — ' +
-                    'host it anywhere (any web server, a stqry screen upload…) and it works on its own. ' +
-                    'Scores are saved on the device, or through the stqry app when hosted in its WebView.');
+                const { folder, files } = await buildTrailFiles({ def, levels: trail.map(t => t.level || null) });
+                downloadBytes(folder + '.zip', zipSync(files), 'application/zip');
+                alert('Trail downloaded as ' + folder + '.zip!\n\n' +
+                    'Inside is a folder of separate pages — index.html (the overview) plus one ' +
+                    'HTML file per game, with images stored as their own files. Host the folder ' +
+                    'anywhere, or upload each page as its own stqry screen/link. Scores are shared ' +
+                    'across the pages via the stqry storage bridge.');
             } catch (err) {
                 alert('Could not build the standalone trail: ' + err.message +
                     '\n\nNote: this feature needs the site to be served over HTTP(S).');

@@ -235,6 +235,10 @@
         if (window.MinigameChain && MinigameChain.active) {
           MinigameChain.report({ points: 100, stars: 3, native: { pieces: engine.pieces.length } });
         }
+        // Embedded in escape-base: let the host unlock the next door.
+        if (window.parent !== window) {
+          window.parent.postMessage({ type: 'escape-base:minigame-complete' }, '*');
+        }
         setTimeout(() => {
           document.getElementById('winOverlay').classList.remove('hidden');
         }, 700);
@@ -265,6 +269,14 @@
       engine.reset(canvas.width, canvas.height);
       renderer.invalidateCache();
       document.getElementById('winOverlay').classList.add('hidden');
+    });
+
+    // Embedded in escape-base: leaving via "← Back" means the player gave up,
+    // so tell the host to keep the door locked.
+    document.getElementById('navBack').addEventListener('click', () => {
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'escape-base:minigame-cancel' }, '*');
+      }
     });
 
     document.getElementById('nextLevelBtn').addEventListener('click', () => {

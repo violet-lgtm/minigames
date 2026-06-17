@@ -697,6 +697,12 @@
                 });
             }
 
+            // Embedded in escape-base: a clean sweep (every reel on the target)
+            // counts as solving the puzzle, so let the host unlock the next door.
+            if (hits === NUM_REELS && window.parent !== window) {
+                window.parent.postMessage({ type: 'escape-base:minigame-complete' }, '*');
+            }
+
             renderResults();
             setTimeout(() => resultModal.classList.add('active'), 650);
         }

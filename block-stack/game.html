@@ -363,6 +363,10 @@
             if (window.MinigameChain && MinigameChain.active) {
                 MinigameChain.report({ points: 100, stars: 3, native: { blocks: score } });
             }
+            // Embedded in escape-base: let the host unlock the next door.
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'escape-base:minigame-complete' }, '*');
+            }
             overTitle.textContent = (CHALLENGE && CHALLENGE.winTitle) || '🏆 Challenge Complete!';
             overText.textContent = (CHALLENGE && CHALLENGE.winMessage) ||
                 ('You stacked all ' + TARGET_HEIGHT + ' blocks!');

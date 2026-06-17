@@ -208,13 +208,34 @@ export function indexPageSource({ def, files, bridgeSrc }) {
 '            if (window.stqry && stqry.user) { stqry.user.get(function (u) { if (u && u.name && !u.isGuest) byId("finalGreeting").textContent = "🎉 Trail complete, " + u.name + "!"; }); }\n' +
 '        } else { fp.classList.remove("visible"); }\n' +
 '    }\n' +
-'    function refresh() { stqry.storage.get(storageKey, function (v) { render(v || null); }); }\n' +
+'    // window.name carries progress across the separate pages when the trail is\n' +
+'    // opened from disk (file://), where each file has its own localStorage.\n' +
+'    function nameGet(key) { try { var o = JSON.parse(window.name); return (o && o.__mt && o.__mt[key]) || null; } catch (e) { return null; } }\n' +
+'    function nameSet(key, val) { var o; try { o = JSON.parse(window.name); } catch (e) { o = null; } if (!o || typeof o !== "object") o = {}; if (!o.__mt) o.__mt = {}; o.__mt[key] = val; try { window.name = JSON.stringify(o); } catch (e) {} }\n' +
+'    function mergeProgress(a, b) {\n' +
+'        if (!a && !b) return null; a = a || { scores: {} }; b = b || { scores: {} };\n' +
+'        var now = Date.now(), out = { v: 1, id: a.id || b.id || DEF.id, startedAt: Math.min(a.startedAt || now, b.startedAt || now), scores: {} };\n' +
+'        var sa = a.scores || {}, sb = b.scores || {}, keys = {}, k;\n' +
+'        for (k in sa) keys[k] = 1; for (k in sb) keys[k] = 1;\n' +
+'        for (k in keys) { var x = sa[k], y = sb[k]; out.scores[k] = (x && y) ? (y.points > x.points ? y : x) : (x || y); }\n' +
+'        return out;\n' +
+'    }\n' +
+'    function refresh() {\n' +
+'        var fromName = nameGet(storageKey);\n' +
+'        stqry.storage.get(storageKey, function (v) {\n' +
+'            var merged = mergeProgress(v || null, fromName);\n' +
+'            if (merged) { nameSet(storageKey, merged); stqry.storage.set((function () { var c = {}; c[storageKey] = merged; return c; })()); }\n' +
+'            render(merged);\n' +
+'        });\n' +
+'    }\n' +
 '    byId("resetBtn").addEventListener("click", function () {\n' +
 '        if (!confirm("Restart the trail? All saved scores will be cleared.")) return;\n' +
+'        nameSet(storageKey, null);\n' +
 '        stqry.storage.remove(storageKey, refresh);\n' +
 '    });\n' +
 '    window.addEventListener("stqryStorageUpdated", refresh);\n' +
 '    window.addEventListener("storage", refresh);\n' +
+'    window.addEventListener("pageshow", refresh);\n' +
 '    refresh();\n' +
 '})();\n' +
 '</' + 'script>\n' +

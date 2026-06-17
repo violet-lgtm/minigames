@@ -77,14 +77,61 @@
     var progress = null;     // cached progress object
 
     // ---- storage helpers (via the stqry bridge) ----
+    // Scores are saved through the bridge (localStorage in a browser, the app's
+    // store inside stqry). But when the pages are opened directly from disk
+    // (file://) each file is a separate origin, so localStorage is NOT shared
+    // between them. window.name persists across navigations within the same
+    // window regardless of origin, so we mirror progress there too and merge on
+    // read — that makes scores carry across the separate trail pages locally.
+    function nameGet(key) {
+        try {
+            var o = JSON.parse(window.name);
+            return (o && o.__mt && o.__mt[key]) || null;
+        } catch (e) { return null; }
+    }
+    function nameSet(key, val) {
+        var o;
+        try { o = JSON.parse(window.name); } catch (e) { o = null; }
+        if (!o || typeof o !== 'object') o = {};
+        if (!o.__mt) o.__mt = {};
+        o.__mt[key] = val;
+        try { window.name = JSON.stringify(o); } catch (e) { /* ignore */ }
+    }
+
+    // Combine two progress objects, keeping the best (highest points) score per
+    // game so neither source can clobber the other.
+    function mergeProgress(a, b) {
+        if (!a && !b) return null;
+        a = a || { scores: {} };
+        b = b || { scores: {} };
+        var now = Date.now();
+        var out = {
+            v: 1,
+            id: a.id || b.id || def.id,
+            startedAt: Math.min(a.startedAt || now, b.startedAt || now),
+            scores: {}
+        };
+        var sa = a.scores || {}, sb = b.scores || {}, k;
+        var keys = {};
+        for (k in sa) keys[k] = 1;
+        for (k in sb) keys[k] = 1;
+        for (k in keys) {
+            var x = sa[k], y = sb[k];
+            out.scores[k] = (x && y) ? (y.points > x.points ? y : x) : (x || y);
+        }
+        return out;
+    }
+
     function readProgress(cb) {
-        if (!window.stqry) { cb(null); return; }
+        var fromName = nameGet(storageKey);
+        if (!window.stqry) { cb(fromName); return; }
         window.stqry.storage.get(storageKey, function (value) {
-            cb(value || null);
+            cb(mergeProgress(value || null, fromName));
         });
     }
 
     function writeProgress(prog, cb) {
+        nameSet(storageKey, prog);
         if (!window.stqry) { if (cb) cb(); return; }
         var changeset = {};
         changeset[storageKey] = prog;

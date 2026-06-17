@@ -301,23 +301,59 @@
             }
         }
 
+        // window.name carries progress across pages opened from disk (file://),
+        // where each file has a separate localStorage.
+        function nameGet(key) {
+            try { var o = JSON.parse(window.name); return (o && o.__mt && o.__mt[key]) || null; }
+            catch (e) { return null; }
+        }
+        function nameSet(key, val) {
+            var o; try { o = JSON.parse(window.name); } catch (e) { o = null; }
+            if (!o || typeof o !== 'object') o = {};
+            if (!o.__mt) o.__mt = {};
+            o.__mt[key] = val;
+            try { window.name = JSON.stringify(o); } catch (e) {}
+        }
+        function mergeProgress(a, b) {
+            if (!a && !b) return null;
+            a = a || { scores: {} }; b = b || { scores: {} };
+            var now = Date.now();
+            var out = { v: 1, id: a.id || b.id || def.id, startedAt: Math.min(a.startedAt || now, b.startedAt || now), scores: {} };
+            var sa = a.scores || {}, sb = b.scores || {}, keys = {}, k;
+            for (k in sa) keys[k] = 1;
+            for (k in sb) keys[k] = 1;
+            for (k in keys) { var x = sa[k], y = sb[k]; out.scores[k] = (x && y) ? (y.points > x.points ? y : x) : (x || y); }
+            return out;
+        }
+
         function refresh() {
-            if (!window.stqry) { render(null); return; }
+            var fromName = nameGet(storageKey);
+            if (!window.stqry) { render(fromName); return; }
             stqry.storage.get(storageKey, function (value) {
-                render(value || null);
+                var merged = mergeProgress(value || null, fromName);
+                if (merged) {
+                    nameSet(storageKey, merged);
+                    var c = {}; c[storageKey] = merged; stqry.storage.set(c);
+                }
+                render(merged);
             });
         }
 
         document.getElementById('resetBtn').addEventListener('click', function () {
             if (!confirm('Restart the trail? All saved scores will be cleared.')) return;
+            nameSet(storageKey, null);
             if (window.stqry) {
                 stqry.storage.remove(storageKey, refresh);
+            } else {
+                refresh();
             }
         });
 
-        // Live-update when a game saves a score in another tab/context.
+        // Live-update when a game saves a score in another tab/context, and when
+        // returning to this page (incl. the bfcache back/forward case).
         window.addEventListener('stqryStorageUpdated', refresh);
         window.addEventListener('storage', refresh);
+        window.addEventListener('pageshow', refresh);
 
         refresh();
     })();

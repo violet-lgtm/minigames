@@ -26,7 +26,10 @@ levels, presets, or pasted editor share-links) into a **trail** and generates:
 
 - **one link per game** — opening it (e.g. from a stqry screen or QR code)
   drops the player straight into that game with the trail attached. A trail
-  bar shows progress and an in-game scores overlay.
+  bar shows progress and an in-game scores overlay. Custom puzzle photos are
+  kept out of the link: the builder extracts them to `trail/assets/` (offered
+  as a small zip to commit) and the link references them by path, so every
+  game's sub-URL stays short.
 - **an overview link** (`trail/results.html`) — live progress, per-game
   points/stars/stats, the running total, and a celebration screen with a
   final score once every game is done.

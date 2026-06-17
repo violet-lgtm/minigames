@@ -1,25 +1,32 @@
 /*
- * Standalone trail page builder.
+ * Standalone trail builder (multi-file).
  *
- * buildTrailPage() bundles a whole trail — hub screen plus every game — into
- * ONE self-contained HTML file that can be hosted anywhere on its own.
+ * buildTrailFiles() turns a trail into a SET of files that can be zipped and
+ * hosted as a folder — each page behind its own link:
  *
- * How the file works at runtime:
- *  - Each game was built with buildStandalonePage() (level baked in via
- *    window.STANDALONE_LEVEL, trail context via window.STANDALONE_TRAIL) and
- *    is embedded as a base64 string, played inside an <iframe srcdoc>.
- *  - The game's bundled stqry bridge detects the iframe and sends its
- *    storage calls to the hub via postMessage; the hub implements the
- *    parent side of the STQRY protocol and delegates to its OWN stqry
- *    bridge — so scores persist via localStorage in a browser and via the
- *    stqry app when the trail page is hosted inside its WebView.
- *  - The hub shows progress, per-game scores, locks (ordered mode) and the
- *    final score, exactly like trail/results.html.
+ *   <folder>/index.html                 the hub / final-score overview
+ *   <folder>/game-1-<slug>.html         each game, standalone, level baked in
+ *   <folder>/game-2-<slug>.html
+ *   <folder>/assets/game-2.jpg          images stored as real, compressed files
+ *
+ * Why multi-file:
+ *  - Each game page is independently hostable (its own URL / stqry screen).
+ *  - Images (paper-puzzle photos) are written as separate JPEG/PNG files
+ *    instead of base64 data URLs, so they aren't inflated ~33% and aren't
+ *    double-encoded inside a bundle. The page references them by relative URL.
+ *
+ * Cross-page state: every page loads the stqry bridge, so scores persist in
+ * localStorage when the folder is served over HTTP (same origin) and in the
+ * stqry app when the pages are hosted as its screens. The hub reads them back.
+ * Navigation between pages uses ordinary links (baked into each game via
+ * window.STANDALONE_TRAIL.files / .indexFile, read by shared/chain.js).
  */
-import { buildStandalonePage } from './standalone.js';
+import { buildStandalonePage, pageFileName } from './standalone.js';
 
-function b64utf8(str) {
-    return btoa(unescape(encodeURIComponent(str)));
+async function fetchText(url) {
+    const res = await fetch(new URL(url, window.location.href), { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`Could not load ${url} (HTTP ${res.status})`);
+    return res.text();
 }
 
 function asciiJson(obj) {
@@ -33,16 +40,37 @@ function escapeScriptText(js) {
     return js.replace(/<\/script/gi, '<\\/script');
 }
 
+function slugify(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'game';
+}
+
+const EXT_BY_MIME = {
+    'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
+    'image/webp': 'webp', 'image/gif': 'gif',
+};
+
+// Decode a base64 data URL into raw bytes + a file extension. Returns null for
+// anything that isn't a base64 data URL (left inline, untouched).
+function dataUrlToBytes(dataUrl) {
+    if (typeof dataUrl !== 'string' || dataUrl.slice(0, 5) !== 'data:') return null;
+    const comma = dataUrl.indexOf(',');
+    if (comma === -1 || dataUrl.lastIndexOf(';base64', comma) === -1) return null;
+    const mime = dataUrl.slice(5, dataUrl.indexOf(';'));
+    const bin = atob(dataUrl.slice(comma + 1));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return { bytes, ext: EXT_BY_MIME[mime] || 'img' };
+}
+
 /**
- * Pure template: returns the hub page HTML.
+ * Pure template: the hub / overview page. Game cards link to sibling files.
  *
  * @param {Object} opts
  * @param {Object} opts.def trail definition { v, id, title, mode, games }
- * @param {string[]} opts.bundles base64(utf8) standalone HTML per game
+ * @param {string[]} opts.files per-game relative filenames (parallel to games)
  * @param {string} opts.bridgeSrc stqry-bridge.js source to inline
- * @returns {string}
  */
-export function hubPageSource({ def, bundles, bridgeSrc }) {
+export function indexPageSource({ def, files, bridgeSrc }) {
     return '<!DOCTYPE html>\n' +
 '<html lang="en">\n' +
 '<head>\n' +
@@ -50,16 +78,12 @@ export function hubPageSource({ def, bundles, bridgeSrc }) {
 '<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
 '<title>' + (def.title || 'Minigame Trail').replace(/</g, '&lt;') + '</title>\n' +
 '<script>\n' +
-'// Storage fallback for hosts that block web storage (sandboxed iframes, file://).\n' +
+'// Storage fallback for hosts that block web storage.\n' +
 '(function () {\n' +
 '    function memStorage() {\n' +
 '        var m = {};\n' +
-'        return {\n' +
-'            getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },\n' +
-'            setItem: function (k, v) { m[k] = String(v); },\n' +
-'            removeItem: function (k) { delete m[k]; },\n' +
-'            clear: function () { m = {}; }\n' +
-'        };\n' +
+'        return { getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },\n' +
+'            setItem: function (k, v) { m[k] = String(v); }, removeItem: function (k) { delete m[k]; }, clear: function () { m = {}; } };\n' +
 '    }\n' +
 '    try { window.localStorage.getItem("-probe-"); window.sessionStorage.getItem("-probe-"); }\n' +
 '    catch (e) {\n' +
@@ -83,7 +107,7 @@ export function hubPageSource({ def, bundles, bridgeSrc }) {
 '.final-panel.visible { display: block; }\n' +
 '.final-panel .big { font-size: 2.6em; font-weight: 800; color: #e2a31c; line-height: 1.1; }\n' +
 '.final-panel .grade { font-size: 1.3em; margin: 6px 0; }\n' +
-'.game-card { background: #fff; border: 1px solid #e7e7e7; border-radius: 14px; padding: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }\n' +
+'.game-card { background: #fff; border: 1px solid #e7e7e7; border-radius: 14px; padding: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); text-decoration: none; color: inherit; }\n' +
 '.game-card.locked { opacity: 0.55; }\n' +
 '.game-card .num { width: 34px; height: 34px; border-radius: 50%; background: #ececec; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }\n' +
 '.game-card.done .num { background: #2e9e4f; color: #fff; }\n' +
@@ -93,24 +117,14 @@ export function hubPageSource({ def, bundles, bridgeSrc }) {
 '.game-card .score { text-align: right; flex-shrink: 0; }\n' +
 '.game-card .pts { font-weight: 800; font-size: 1.15em; }\n' +
 '.game-card .stars { font-size: 0.85em; letter-spacing: 1px; }\n' +
-'.btn { display: inline-block; border: 0; border-radius: 10px; padding: 9px 16px; font: inherit; font-weight: 800; cursor: pointer; text-decoration: none; background: #f6b62e; color: #1a1a1a; white-space: nowrap; }\n' +
-'.btn:hover { background: #e2a31c; }\n' +
-'.btn-ghost { background: #ececec; }\n' +
-'.btn-ghost:hover { background: #ddd; }\n' +
+'.go { font-weight: 800; color: #e2a31c; flex-shrink: 0; }\n' +
+'.btn { display: inline-block; border: 0; border-radius: 10px; padding: 9px 16px; font: inherit; font-weight: 800; cursor: pointer; background: #ececec; color: #1a1a1a; }\n' +
 '.footer-row { text-align: center; margin-top: 18px; }\n' +
-'#player { display: none; position: fixed; inset: 0; z-index: 9999; background: #fff; flex-direction: column; }\n' +
-'#player.open { display: flex; }\n' +
-'#playerBar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #14161c; color: #fff; }\n' +
-'#playerBar .title { font-weight: 800; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n' +
-'#playerFrame { flex: 1; width: 100%; border: 0; }\n' +
 '</style>\n' +
 '</head>\n' +
 '<body>\n' +
 '<div class="wrap">\n' +
-'    <header>\n' +
-'        <h1 id="trailTitle"></h1>\n' +
-'        <span class="mode-badge" id="modeBadge"></span>\n' +
-'    </header>\n' +
+'    <header><h1 id="trailTitle"></h1><span class="mode-badge" id="modeBadge"></span></header>\n' +
 '    <div class="final-panel" id="finalPanel">\n' +
 '        <div id="finalGreeting" style="font-weight:800;">🎉 Trail complete!</div>\n' +
 '        <div class="big"><span id="finalPts">0</span> pts</div>\n' +
@@ -123,39 +137,24 @@ export function hubPageSource({ def, bundles, bridgeSrc }) {
 '        <div class="stat"><div class="label">Stars</div><div class="value" id="starsVal">0</div></div>\n' +
 '    </div>\n' +
 '    <div id="gameList"></div>\n' +
-'    <div class="footer-row">\n' +
-'        <button class="btn btn-ghost" id="resetBtn">↺ Restart Trail</button>\n' +
-'    </div>\n' +
-'</div>\n' +
-'<div id="player">\n' +
-'    <div id="playerBar">\n' +
-'        <button class="btn" id="backBtn">← Trail</button>\n' +
-'        <span class="title" id="playerTitle"></span>\n' +
-'    </div>\n' +
-'    <iframe id="playerFrame" allow="fullscreen"></iframe>\n' +
+'    <div class="footer-row"><button class="btn" id="resetBtn">↺ Restart Trail</button></div>\n' +
 '</div>\n' +
 '<script>\n' +
 '(function () {\n' +
 '    "use strict";\n' +
 '    var DEF = ' + asciiJson(def) + ';\n' +
-'    var GAME_PAGES = ' + JSON.stringify(bundles) + ';\n' +
+'    var FILES = ' + JSON.stringify(files) + ';\n' +
 '    var storageKey = "trail-" + DEF.id;\n' +
 '    var N = DEF.games.length;\n' +
-'    var currentGame = -1;\n' +
-'\n' +
-'    function fromB64(s) { return decodeURIComponent(escape(atob(s))); }\n' +
 '    function byId(id) { return document.getElementById(id); }\n' +
-'\n' +
 '    byId("trailTitle").textContent = "🏁 " + (DEF.title || "Minigame Trail");\n' +
 '    byId("modeBadge").textContent = DEF.mode === "ordered" ? "➡️ Play in order" : "🔀 Play in any order";\n' +
-'\n' +
 '    function isDone(prog, i) { return !!(prog && prog.scores && prog.scores[String(i)]); }\n' +
 '    function isUnlocked(prog, i) {\n' +
 '        if (DEF.mode !== "ordered") return true;\n' +
 '        for (var j = 0; j < i; j++) if (!isDone(prog, j)) return false;\n' +
 '        return true;\n' +
 '    }\n' +
-'\n' +
 '    function nativeSummary(slug, n) {\n' +
 '        if (!n) return "";\n' +
 '        switch (slug) {\n' +
@@ -168,146 +167,54 @@ export function hubPageSource({ def, bundles, bridgeSrc }) {
 '            default: return "";\n' +
 '        }\n' +
 '    }\n' +
-'\n' +
 '    function render(prog) {\n' +
 '        var scores = (prog && prog.scores) || {};\n' +
 '        var done = 0, totalPts = 0, totalStars = 0;\n' +
-'        var list = byId("gameList");\n' +
-'        list.innerHTML = "";\n' +
+'        var list = byId("gameList"); list.innerHTML = "";\n' +
 '        DEF.games.forEach(function (g, i) {\n' +
 '            var s = scores[String(i)];\n' +
 '            var unlocked = isUnlocked(prog, i);\n' +
-'            var card = document.createElement("div");\n' +
+'            var card = document.createElement(unlocked ? "a" : "div");\n' +
 '            card.className = "game-card" + (s ? " done" : "") + (!unlocked ? " locked" : "");\n' +
-'            var num = document.createElement("div");\n' +
-'            num.className = "num";\n' +
-'            num.textContent = s ? "✓" : (i + 1);\n' +
-'            card.appendChild(num);\n' +
-'            var info = document.createElement("div");\n' +
-'            info.className = "info";\n' +
-'            var name = document.createElement("div");\n' +
-'            name.className = "name";\n' +
-'            name.textContent = g.name || g.slug;\n' +
-'            info.appendChild(name);\n' +
-'            var detail = document.createElement("div");\n' +
-'            detail.className = "detail";\n' +
-'            detail.textContent = s ? nativeSummary(g.slug, s.native)\n' +
-'                : (unlocked ? "Not played yet" : "Locked — finish the games before it");\n' +
-'            info.appendChild(detail);\n' +
-'            card.appendChild(info);\n' +
+'            if (unlocked) card.href = FILES[i];\n' +
+'            var num = document.createElement("div"); num.className = "num";\n' +
+'            num.textContent = s ? "✓" : (unlocked ? (i + 1) : "🔒"); card.appendChild(num);\n' +
+'            var info = document.createElement("div"); info.className = "info";\n' +
+'            var name = document.createElement("div"); name.className = "name";\n' +
+'            name.textContent = g.name || g.slug; info.appendChild(name);\n' +
+'            var detail = document.createElement("div"); detail.className = "detail";\n' +
+'            detail.textContent = s ? nativeSummary(g.slug, s.native) : (unlocked ? "Not played yet" : "Locked");\n' +
+'            info.appendChild(detail); card.appendChild(info);\n' +
 '            if (s) {\n' +
 '                done++; totalPts += s.points; totalStars += s.stars || 0;\n' +
-'                var sc = document.createElement("div");\n' +
-'                sc.className = "score";\n' +
-'                sc.innerHTML = "<div class=\\"pts\\">" + s.points + "</div>" +\n' +
-'                    "<div class=\\"stars\\">" + "⭐".repeat(s.stars || 0) + "</div>";\n' +
+'                var sc = document.createElement("div"); sc.className = "score";\n' +
+'                sc.innerHTML = "<div class=\\"pts\\">" + s.points + "</div><div class=\\"stars\\">" + "⭐".repeat(s.stars || 0) + "</div>";\n' +
 '                card.appendChild(sc);\n' +
-'            }\n' +
-'            if (unlocked) {\n' +
-'                var play = document.createElement("button");\n' +
-'                play.className = "btn" + (s ? " btn-ghost" : "");\n' +
-'                play.textContent = s ? "Improve" : "Play →";\n' +
-'                play.addEventListener("click", function () { openGame(i); });\n' +
-'                card.appendChild(play);\n' +
-'            } else {\n' +
-'                var lock = document.createElement("span");\n' +
-'                lock.textContent = "🔒";\n' +
-'                card.appendChild(lock);\n' +
+'            } else if (unlocked) {\n' +
+'                var go = document.createElement("div"); go.className = "go"; go.textContent = "Play →"; card.appendChild(go);\n' +
 '            }\n' +
 '            list.appendChild(card);\n' +
 '        });\n' +
 '        byId("doneVal").textContent = done + "/" + N;\n' +
 '        byId("ptsVal").textContent = totalPts;\n' +
 '        byId("starsVal").textContent = totalStars + "/" + N * 3;\n' +
-'        var finalPanel = byId("finalPanel");\n' +
+'        var fp = byId("finalPanel");\n' +
 '        if (done === N && N > 0) {\n' +
-'            finalPanel.classList.add("visible");\n' +
+'            fp.classList.add("visible");\n' +
 '            byId("finalPts").textContent = totalPts;\n' +
 '            byId("finalStars").textContent = totalStars + " of " + N * 3 + " stars";\n' +
 '            var pct = totalPts / (N * 100);\n' +
-'            byId("finalGrade").textContent =\n' +
-'                pct >= 0.9 ? "🏆 Outstanding!" : pct >= 0.7 ? "🥇 Great run!"\n' +
-'                : pct >= 0.5 ? "🥈 Well done!" : "🥉 Trail completed!";\n' +
-'            if (window.stqry && stqry.user) {\n' +
-'                stqry.user.get(function (user) {\n' +
-'                    if (user && user.name && !user.isGuest) {\n' +
-'                        byId("finalGreeting").textContent = "🎉 Trail complete, " + user.name + "!";\n' +
-'                    }\n' +
-'                });\n' +
-'            }\n' +
-'        } else {\n' +
-'            finalPanel.classList.remove("visible");\n' +
-'        }\n' +
+'            byId("finalGrade").textContent = pct >= 0.9 ? "🏆 Outstanding!" : pct >= 0.7 ? "🥇 Great run!" : pct >= 0.5 ? "🥈 Well done!" : "🥉 Trail completed!";\n' +
+'            if (window.stqry && stqry.user) { stqry.user.get(function (u) { if (u && u.name && !u.isGuest) byId("finalGreeting").textContent = "🎉 Trail complete, " + u.name + "!"; }); }\n' +
+'        } else { fp.classList.remove("visible"); }\n' +
 '    }\n' +
-'\n' +
-'    function refresh() {\n' +
-'        stqry.storage.get(storageKey, function (value) { render(value || null); });\n' +
-'    }\n' +
-'\n' +
-'    function openGame(i) {\n' +
-'        stqry.storage.get(storageKey, function (prog) {\n' +
-'            if (!isUnlocked(prog, i)) return;\n' +
-'            currentGame = i;\n' +
-'            byId("playerTitle").textContent = DEF.games[i].name || DEF.games[i].slug;\n' +
-'            byId("playerFrame").srcdoc = fromB64(GAME_PAGES[i]);\n' +
-'            byId("player").classList.add("open");\n' +
-'        });\n' +
-'    }\n' +
-'\n' +
-'    function closeGame() {\n' +
-'        currentGame = -1;\n' +
-'        byId("player").classList.remove("open");\n' +
-'        byId("playerFrame").srcdoc = "";\n' +
-'        refresh();\n' +
-'    }\n' +
-'\n' +
-'    byId("backBtn").addEventListener("click", closeGame);\n' +
+'    function refresh() { stqry.storage.get(storageKey, function (v) { render(v || null); }); }\n' +
 '    byId("resetBtn").addEventListener("click", function () {\n' +
 '        if (!confirm("Restart the trail? All saved scores will be cleared.")) return;\n' +
 '        stqry.storage.remove(storageKey, refresh);\n' +
 '    });\n' +
-'\n' +
-'    // ---- parent side of the STQRY protocol for the embedded games ----\n' +
-'    // The game\'s bundled bridge detects it runs in an iframe and posts its\n' +
-'    // storage calls here; we delegate to OUR bridge (localStorage in a\n' +
-'    // browser, the stqry app when this page runs inside its WebView).\n' +
-'    window.addEventListener("message", function (e) {\n' +
-'        var frame = byId("playerFrame");\n' +
-'        if (!frame.contentWindow || e.source !== frame.contentWindow) return;\n' +
-'        var msg;\n' +
-'        try { msg = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch (err) { return; }\n' +
-'        if (!msg || !msg.action) return;\n' +
-'        var d = msg.data || {};\n' +
-'        function respond() {\n' +
-'            if (!msg.callbackId) return;\n' +
-'            e.source.postMessage(JSON.stringify({\n' +
-'                action: "callback", callbackId: msg.callbackId,\n' +
-'                args: Array.prototype.slice.call(arguments)\n' +
-'            }), "*");\n' +
-'        }\n' +
-'        switch (msg.action) {\n' +
-'            case "storage.get":\n' +
-'                stqry.storage.get(d.key, function (v) { respond(v); }, d.storageKey);\n' +
-'                break;\n' +
-'            case "storage.set":\n' +
-'                stqry.storage.set(d.changeset, function () { respond(); refresh(); }, d.storageKey);\n' +
-'                break;\n' +
-'            case "storage.remove":\n' +
-'                stqry.storage.remove(d.key, function () { respond(); refresh(); }, d.storageKey);\n' +
-'                break;\n' +
-'            case "storage.clear":\n' +
-'                stqry.storage.clear(function () { respond(); refresh(); }, d.storageKey);\n' +
-'                break;\n' +
-'            case "minigameTrail.goto":\n' +
-'                if (typeof d.index === "number") openGame(d.index);\n' +
-'                break;\n' +
-'        }\n' +
-'    });\n' +
-'\n' +
-'    // Cross-tab / in-app updates.\n' +
 '    window.addEventListener("stqryStorageUpdated", refresh);\n' +
 '    window.addEventListener("storage", refresh);\n' +
-'\n' +
 '    refresh();\n' +
 '})();\n' +
 '</' + 'script>\n' +
@@ -316,28 +223,45 @@ export function hubPageSource({ def, bundles, bridgeSrc }) {
 }
 
 /**
- * Build the complete standalone trail page.
+ * Build all files for a downloadable trail.
  *
  * @param {Object} opts
  * @param {Object} opts.def trail definition { v, id, title, mode, games }
- * @param {Array}  opts.levels per-game level payload to bake in (or null),
- *                 parallel to def.games
- * @returns {Promise<string>} the hub page HTML with all games embedded
+ * @param {Array}  opts.levels per-game level payload (or null), parallel to games
+ * @returns {Promise<{ folder: string, files: Array<{name, data}> }>}
  */
-export async function buildTrailPage({ def, levels }) {
-    const bundles = [];
+export async function buildTrailFiles({ def, levels }) {
+    const folder = (pageFileName(def.title + ' trail').replace(/\.html$/, '')) || 'trail';
+    const gameFiles = def.games.map((g, i) => 'game-' + (i + 1) + '-' + slugify(g.slug) + '.html');
+    const files = [];
+
+    const bridgeSrc = await fetchText('../shared/stqry-bridge.js');
+
     for (let i = 0; i < def.games.length; i++) {
         const g = def.games[i];
+        let level = levels[i] || null;
+
+        // Pull big base64 images out into their own compressed files.
+        if (level && level.img) {
+            const decoded = dataUrlToBytes(level.img);
+            if (decoded) {
+                const assetName = 'assets/game-' + (i + 1) + '.' + decoded.ext;
+                files.push({ name: folder + '/' + assetName, data: decoded.bytes });
+                level = Object.assign({}, level, { img: assetName });
+            }
+        }
+
         const html = await buildStandalonePage({
             gamePage: '../' + g.slug + '/game.html',
-            level: levels[i] || null,
+            level,
             title: (g.name || g.slug) + ' – ' + (def.title || 'Trail'),
-            inject: { STANDALONE_TRAIL: { def: def, index: i } },
+            inject: {
+                STANDALONE_TRAIL: { def, index: i, files: gameFiles, indexFile: 'index.html' },
+            },
         });
-        bundles.push(b64utf8(html));
+        files.push({ name: folder + '/' + gameFiles[i], data: html });
     }
-    const res = await fetch('../shared/stqry-bridge.js', { cache: 'no-cache' });
-    if (!res.ok) throw new Error('Could not load the stqry bridge (HTTP ' + res.status + ')');
-    const bridgeSrc = await res.text();
-    return hubPageSource({ def, bundles, bridgeSrc });
+
+    files.push({ name: folder + '/index.html', data: indexPageSource({ def, files: gameFiles, bridgeSrc }) });
+    return { folder, files };
 }

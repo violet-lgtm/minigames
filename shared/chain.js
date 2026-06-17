@@ -67,6 +67,10 @@
 
     var storageKey = 'trail-' + def.id;
     var trailB64 = standalone ? null : params.get('trail'); // re-used verbatim when building links
+    // In a standalone (downloaded) trail each game is its own file in the same
+    // folder; `files` holds their relative names and `indexFile` the hub page.
+    var files = (standalone && Array.isArray(standalone.files)) ? standalone.files : null;
+    var indexFile = (standalone && standalone.indexFile) || null;
     var entry = def.games[index];
     var bar = null;          // the bottom trail bar element
     var barStatus = null;
@@ -88,8 +92,10 @@
     }
 
     // ---- link building ----
-    // Pages live at <root>/<game>/game.html, so the repo root is one level up.
     function gameLink(i) {
+        // Standalone trail: a sibling file in the same folder.
+        if (files) return files[i];
+        // Hosted on the site: pages live at <root>/<game>/game.html (one level up).
         var url = def.games[i].url;
         var hash = '';
         var hashPos = url.indexOf('#');
@@ -146,6 +152,13 @@
         overview.addEventListener('click', showScoresOverlay);
         bar.appendChild(overview);
 
+        // In a downloaded trail the hub page is how you pick the next game.
+        if (indexFile) {
+            var hub = el('a', BTN_CSS + 'background:rgba(255,255,255,0.14);color:#fff;', '🏁 Overview');
+            hub.href = indexFile;
+            bar.appendChild(hub);
+        }
+
         document.body.appendChild(bar);
         // keep the bar from covering page content
         document.body.style.paddingBottom = '64px';
@@ -173,16 +186,21 @@
         var total = 0, totalStars = 0, done = 0;
         def.games.forEach(function (g, i) {
             var s = scores[String(i)];
-            var row = el('div',
-                'display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eee;');
+            var unlocked = isUnlocked(prog, i);
+            // In a downloaded trail, a row links straight to that game's page.
+            var canJump = files && unlocked && i !== index;
+            var row = el(canJump ? 'a' : 'div',
+                'display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eee;' +
+                'text-decoration:none;color:inherit;' + (canJump ? 'cursor:pointer;' : ''));
+            if (canJump) row.href = gameLink(i);
             row.appendChild(el('span',
                 'width:22px;font-weight:800;color:' + (s ? '#2e9e4f' : '#9aa0a8') + ';',
-                s ? '✓' : String(i + 1)));
+                s ? '✓' : (unlocked ? String(i + 1) : '🔒')));
             row.appendChild(el('span', 'flex:1;font-weight:700;',
                 (g.name || g.slug) + (i === index ? ' (now)' : '')));
             row.appendChild(el('span',
                 'font-weight:800;white-space:nowrap;color:' + (s ? '#1a1a1a' : '#9aa0a8') + ';',
-                s ? (s.points + ' pts ' + '⭐'.repeat(s.stars || 0)) : '—'));
+                s ? (s.points + ' pts ' + '⭐'.repeat(s.stars || 0)) : (canJump ? 'Play →' : '—')));
             card.appendChild(row);
             if (s) { total += s.points; totalStars += s.stars || 0; done++; }
         });
@@ -194,6 +212,15 @@
         totalRow.appendChild(el('span', '',
             total + ' pts · ' + totalStars + '/' + (def.games.length * 3) + ' ⭐'));
         card.appendChild(totalRow);
+
+        // Footer link to the full overview page (downloaded trails only).
+        if (indexFile) {
+            var hubLink = el('a',
+                'display:block;text-align:center;margin-top:12px;color:#5e5e5e;font-weight:700;text-decoration:none;',
+                '🏁 Open full overview');
+            hubLink.href = indexFile;
+            card.appendChild(hubLink);
+        }
 
         var close = el('button', BTN_CSS + 'width:100%;margin-top:18px;', 'Close');
         function dismiss() { if (overlay.parentNode) document.body.removeChild(overlay); }
@@ -221,22 +248,9 @@
             'This game is still locked'));
         card.appendChild(el('p', 'color:#cfcfcf;margin-bottom:18px;',
             'This trail is played in a set order. Up next:'));
-        var goLabel = '▶ ' + (def.games[firstLocked].name || def.games[firstLocked].slug);
-        var go;
-        if (standalone) {
-            // Inside a standalone trail page the hub does the navigating.
-            go = el('button', BTN_CSS, goLabel);
-            go.addEventListener('click', function () {
-                window.parent.postMessage(JSON.stringify({
-                    action: 'minigameTrail.goto',
-                    version: 'v1',
-                    data: { index: firstLocked }
-                }), '*');
-            });
-        } else {
-            go = el('a', BTN_CSS, goLabel);
-            go.href = gameLink(firstLocked);
-        }
+        var go = el('a', BTN_CSS,
+            '▶ ' + (def.games[firstLocked].name || def.games[firstLocked].slug));
+        go.href = gameLink(firstLocked);
         card.appendChild(go);
         overlay.appendChild(card);
         document.body.appendChild(overlay);

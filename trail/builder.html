@@ -168,12 +168,13 @@
         <div class="panel">
             <div class="row" style="margin-bottom:0">
                 <button class="btn" id="generateBtn" style="flex:1">🔗 Generate Links</button>
-                <button class="btn btn-ghost" id="standaloneTrailBtn" style="flex:1">📦 Download Standalone Trail</button>
+                <button class="btn btn-ghost" id="standaloneTrailBtn" style="flex:1">📦 Download Trail (.zip)</button>
             </div>
             <p class="hint">
-                <strong>📦 Standalone trail:</strong> one self-contained HTML file with the hub
-                and every game inside — host it anywhere on its own (a web server, a stqry
-                screen upload) with no other files needed.
+                <strong>📦 Standalone trail:</strong> a zip containing a folder of separate pages —
+                <code>index.html</code> (the overview) and one HTML file per game, with images
+                kept as their own files. Each page can be hosted behind its own link (or uploaded
+                as a stqry screen); scores are shared across them via the stqry storage bridge.
             </p>
             <div class="links-out" id="linksOut">
                 <div style="margin-top:14px" id="linkRows"></div>
@@ -193,8 +194,8 @@
         import { builtInLevels as wireLevels } from '../wire-puzzle/js/core/levels.js';
         import { builtInLevels as mmLevels } from '../mastermind/js/core/levels.js';
         import { LEVELS as paperLevels } from '../paper-puzzle/js/core/levels.js';
-        import { downloadPage, pageFileName } from '../shared/standalone.js';
-        import { buildTrailPage } from '../shared/trail-standalone.js';
+        import { buildTrailFiles } from '../shared/trail-standalone.js';
+        import { zipSync, downloadBytes } from '../shared/zip.js';
 
         const $ = id => document.getElementById(id);
 
@@ -479,7 +480,7 @@
             $('linksOut').classList.add('visible');
         });
 
-        // ---- standalone trail: one self-contained HTML file ----
+        // ---- standalone trail: a zip of independently-hostable pages ----
         $('standaloneTrailBtn').addEventListener('click', async () => {
             if (!requireTrail()) return;
             const bad = trail.filter(t => t.levelError);
@@ -495,11 +496,13 @@
             btn.textContent = '⏳ Building…';
             try {
                 const def = makeDef();
-                const html = await buildTrailPage({ def, levels: trail.map(t => t.level || null) });
-                downloadPage(pageFileName(def.title + ' trail'), html);
-                alert('Standalone trail downloaded!\n\nThe single file contains the hub and every game — ' +
-                    'host it anywhere (any web server, a stqry screen upload…) and it works on its own. ' +
-                    'Scores are saved on the device, or through the stqry app when hosted in its WebView.');
+                const { folder, files } = await buildTrailFiles({ def, levels: trail.map(t => t.level || null) });
+                downloadBytes(folder + '.zip', zipSync(files), 'application/zip');
+                alert('Trail downloaded as ' + folder + '.zip!\n\n' +
+                    'Inside is a folder of separate pages — index.html (the overview) plus one ' +
+                    'HTML file per game, with images stored as their own files. Host the folder ' +
+                    'anywhere, or upload each page as its own stqry screen/link. Scores are shared ' +
+                    'across the pages via the stqry storage bridge.');
             } catch (err) {
                 alert('Could not build the standalone trail: ' + err.message +
                     '\n\nNote: this feature needs the site to be served over HTTP(S).');

@@ -506,6 +506,11 @@
                 MinigameChain.report({ points: 100, stars: 3, native: { moves: engine.moveCount } });
             }
 
+            // Embedded in escape-base: let the host unlock the next door.
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'escape-base:minigame-complete' }, '*');
+            }
+
             // Set custom win message if available
             const winMessageEl = document.getElementById('winMessage');
             winMessageEl.textContent = currentLevel?.winMessage || '🎉 Level Complete!';

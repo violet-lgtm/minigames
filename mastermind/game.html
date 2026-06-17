@@ -558,6 +558,10 @@
             if (state.won) {
                 title.textContent = '🎉 Code Cracked!';
                 message.textContent = currentLevel.winMessage || 'You cracked the code!';
+                // Embedded in escape-base: let the host unlock the next door.
+                if (window.parent !== window) {
+                    window.parent.postMessage({ type: 'escape-base:minigame-complete' }, '*');
+                }
             } else {
                 title.textContent = '💥 Out of Guesses';
                 message.textContent = 'The code defeated you this time — the answer is revealed above.';
@@ -593,6 +597,14 @@
         });
         document.getElementById('backBtn').addEventListener('click', showLevelSelector);
         document.getElementById('modalBackBtn').addEventListener('click', showLevelSelector);
+
+        // Embedded in escape-base: leaving via "Back to Menu" means the player
+        // gave up, so tell the host to keep the door locked.
+        document.querySelector('.back-link').addEventListener('click', () => {
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'escape-base:minigame-cancel' }, '*');
+            }
+        });
 
         document.getElementById('shareBtn').addEventListener('click', () => {
             if (!currentLevel) return;

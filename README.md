@@ -39,11 +39,9 @@ levels, presets, or pasted editor share-links) into a **trail** and generates:
   images written as their own compressed files under `assets/` (no base64
   inflation). Host the folder anywhere, or upload each page as its own stqry
   screen/link. Pages share scores through the stqry storage bridge — same
-  origin over HTTP, or the app's storage inside its WebView — and also via
-  `window.name`, so scores still carry across the pages when the files are
-  opened directly from disk (`file://`, where each file's localStorage is
-  isolated). Navigation between pages uses ordinary links baked into each
-  page (`shared/trail-standalone.js`, zipped with `shared/zip.js`).
+  origin over HTTP, or the app's storage inside its WebView — and navigate
+  via ordinary links baked into each page (`shared/trail-standalone.js`,
+  zipped with `shared/zip.js`).
 
 Trails can be played **in any order** (every link works any time) or in a
 **set order** (games stay locked until the previous one is finished).

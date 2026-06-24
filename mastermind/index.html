@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Mastermind - Crack the Code!</title>
+    <title data-i18n="index_title">Mastermind - Crack the Code!</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="../shared/i18n.js"></script>
+    <script src="js/i18n.js"></script>
     <style>
         .menu-container {
             max-width: 760px;
@@ -63,25 +65,18 @@
     <div class="container menu-container">
         <header>
             <h1>🧠 Mastermind</h1>
-            <p>Crack the hidden colour code using logic and deduction!</p>
+            <p data-i18n="tagline">Crack the hidden colour code using logic and deduction!</p>
         </header>
 
         <div class="preview-row" id="previewRow"></div>
 
         <div class="menu-buttons">
-            <a href="game.html" class="btn btn-primary menu-btn">🎮 Play Game</a>
-            <a href="editor.html" class="btn btn-secondary menu-btn">🔧 Level Editor</a>
-            <a href="game.html?mode=custom" class="btn btn-secondary menu-btn">📁 Custom Levels</a>
+            <a href="game.html" class="btn btn-primary menu-btn" data-i18n="play">🎮 Play Game</a>
+            <a href="editor.html" class="btn btn-secondary menu-btn" data-i18n="editor">🔧 Level Editor</a>
+            <a href="game.html?mode=custom" class="btn btn-secondary menu-btn" data-i18n="custom">📁 Custom Levels</a>
         </div>
 
-        <ul class="feature-list">
-            <li>6 built-in levels from beginner to grandmaster</li>
-            <li>Fully customisable: code length, colours, guesses & more</li>
-            <li>Choose the shape of your pips — circles, stars, hearts…</li>
-            <li>Write your own custom win message</li>
-            <li>Level editor with set or random solutions</li>
-            <li>Export, import and share levels with a link</li>
-        </ul>
+        <ul class="feature-list" id="featureList"></ul>
     </div>
 
     <script type="module">
@@ -96,6 +91,19 @@
                 size: 54,
             }));
         });
+
+        const I = window.MasterI18n;
+        const featureList = document.getElementById('featureList');
+        function renderFeatures() {
+            featureList.innerHTML = '';
+            (I.tf('feat') || []).forEach((f) => {
+                const li = document.createElement('li');
+                li.textContent = f;
+                featureList.appendChild(li);
+            });
+        }
+        I.onChange(renderFeatures);
+        renderFeatures();
     </script>
 </body>
 </html>

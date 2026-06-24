@@ -7,6 +7,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Truck Jam - Clear the Yard</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="../shared/i18n.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/core/engine.js"></script>
     <script src="js/core/levels.js"></script>
     <script src="js/core/storage.js"></script>
@@ -292,9 +294,9 @@
                 <p class="lblurb" id="levelBlurb"></p>
             </div>
             <div class="scorebar">
-                <div class="pill"><div class="plabel">Moves</div><div class="pval" id="moveCount">0</div></div>
-                <div class="pill"><div class="plabel">Par</div><div class="pval" id="parVal">–</div></div>
-                <div class="pill"><div class="plabel">Best</div><div class="pval" id="bestVal">–</div></div>
+                <div class="pill"><div class="plabel" data-i18n="stat_moves">Moves</div><div class="pval" id="moveCount">0</div></div>
+                <div class="pill"><div class="plabel" data-i18n="stat_par">Par</div><div class="pval" id="parVal">–</div></div>
+                <div class="pill"><div class="plabel" data-i18n="stat_best">Best</div><div class="pval" id="bestVal">–</div></div>
             </div>
         </div>
 
@@ -303,27 +305,27 @@
             <div class="exit-gate" id="exitGate">➜</div>
         </div>
 
-        <div class="hint-note" id="hintNote">Drag your red lorry to the exit gate. Trucks only slide along their length.</div>
+        <div class="hint-note" id="hintNote" data-i18n="hint_default">Drag your red lorry to the exit gate. Trucks only slide along their length.</div>
 
         <div class="controls">
-            <button class="btn btn-secondary btn-sm" id="prevBtn">‹ Prev</button>
-            <button class="btn btn-secondary btn-sm" id="resetBtn">↺ Reset</button>
-            <button class="btn btn-secondary btn-sm" id="hintBtn">💡 Hint</button>
-            <button class="btn btn-secondary btn-sm" id="nextBtn">Next ›</button>
+            <button class="btn btn-secondary btn-sm" id="prevBtn" data-i18n="btn_prev">‹ Prev</button>
+            <button class="btn btn-secondary btn-sm" id="resetBtn" data-i18n="btn_reset">↺ Reset</button>
+            <button class="btn btn-secondary btn-sm" id="hintBtn" data-i18n="btn_hint">💡 Hint</button>
+            <button class="btn btn-secondary btn-sm" id="nextBtn" data-i18n="btn_next">Next ›</button>
         </div>
 
         <div class="controls">
-            <a href="index.html" class="btn btn-sm">☰ Levels</a>
+            <a href="index.html" class="btn btn-sm" data-i18n="btn_levels">☰ Levels</a>
         </div>
     </div>
 
     <!-- Win modal -->
     <div class="modal" id="winModal">
         <div class="modal-content">
-            <div class="win-message" id="winTitle">Cleared the yard! 🚛</div>
+            <div class="win-message" id="winTitle" data-i18n="win_title">Cleared the yard! 🚛</div>
             <div class="star-row" id="starRow">⭐⭐⭐</div>
             <div class="modal-stats" id="winStats"></div>
-            <button class="btn btn-primary" id="replayBtn">Replay</button>
+            <button class="btn btn-primary" id="replayBtn" data-i18n="btn_replay">Replay</button>
         </div>
     </div>
 
@@ -332,6 +334,7 @@
         'use strict';
         const Engine = window.TruckJam;
         const Store = window.TruckJamStore;
+        const I = window.TruckI18n;
 
         const params = new URLSearchParams(location.search);
 
@@ -513,8 +516,10 @@
             setTimeout(() => showWin(isBest), 620);
         }
 
+        let lastWin = null; // cached so the win modal re-localises on language change
         function showWin(isBest) {
             const stars = starsFor(moves, levelDef.par);
+            lastWin = { moves: moves, par: levelDef.par, isBest: isBest };
             // Trail mode: bank the result for the final overview page.
             // Closer to par = more points.
             if (window.MinigameChain && MinigameChain.active) {
@@ -526,26 +531,33 @@
             }
             document.getElementById('starRow').textContent =
                 '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
-            const bestTxt = isBest ? ' <b>(new best!)</b>' : '';
+            renderWinStats();
+            document.getElementById('winModal').classList.add('active');
+        }
+
+        // Render the cached win stats + next button in the current language.
+        function renderWinStats() {
+            if (!lastWin) return;
+            const bestTxt = lastWin.isBest ? ' <b>' + I.t('newbest_inline').trim() + '</b>' : '';
             document.getElementById('winStats').innerHTML =
-                'Cleared in <b>' + moves + '</b> move' + (moves === 1 ? '' : 's') +
-                ' &middot; par <b>' + levelDef.par + '</b>' + bestTxt;
+                I.t('win_cleared', {
+                    moves: '<b>' + lastWin.moves + '</b>',
+                    unit: I.t(lastWin.moves === 1 ? 'unit_move' : 'unit_moves'),
+                    par: '<b>' + lastWin.par + '</b>'
+                }) + bestTxt;
             const last = levelIndex >= Levels.length - 1;
             const nextBtn = document.getElementById('nextLevelBtn');
-            if (customLevel) {
-                nextBtn.style.display = 'none';
-            } else {
-                nextBtn.textContent = last ? 'Back to Levels' : 'Next Yard →';
+            if (nextBtn) {
+                if (customLevel) nextBtn.style.display = 'none';
+                else nextBtn.textContent = last ? I.t('nb_back') : I.t('nb_next');
             }
-            document.getElementById('winModal').classList.add('active');
         }
 
         // ---------- hint ----------
         let hintTimer = null;
         function clearHint() {
             els.forEach(el => el.classList.remove('hint'));
-            document.getElementById('hintNote').textContent =
-                'Drag your red lorry to the exit gate. Trucks only slide along their length.';
+            document.getElementById('hintNote').textContent = I.t('hint_default');
         }
         function showHint() {
             if (solved) return;
@@ -557,7 +569,7 @@
             const res = Engine.solve(snapshot, 200000);
             const note = document.getElementById('hintNote');
             if (!res.solvable || !res.moves || !res.moves.length) {
-                note.textContent = res.solvable ? 'Already solved!' : 'No solution from here — try Reset.';
+                note.textContent = res.solvable ? I.t('hint_solved') : I.t('hint_none');
                 return;
             }
             const step = res.moves[0];
@@ -568,9 +580,9 @@
                 clearTimeout(hintTimer);
                 hintTimer = setTimeout(() => el.classList.remove('hint'), 2000);
             }
-            const dirWord = { left: 'left', right: 'right', up: 'up', down: 'down' }[step.dir];
-            const who = step.id === 'target' ? 'your lorry' : 'the highlighted truck';
-            note.textContent = 'Try sliding ' + who + ' ' + dirWord + '.';
+            const dirWord = I.t('dir_' + step.dir);
+            const who = step.id === 'target' ? I.t('who_target') : I.t('who_other');
+            note.textContent = I.t('hint_try', { who: who, dir: dirWord });
         }
 
         // ---------- hud + level loading ----------
@@ -608,10 +620,18 @@
         document.getElementById('nextBtn').addEventListener('click', () => { if (levelIndex < Levels.length - 1) loadLevel(levelIndex + 1); });
         document.getElementById('hintBtn').addEventListener('click', showHint);
         document.getElementById('replayBtn').addEventListener('click', () => loadLevel(levelIndex));
-        document.getElementById('nextLevelBtn').addEventListener('click', () => {
+        const nextLevelBtn = document.getElementById('nextLevelBtn');
+        if (nextLevelBtn) nextLevelBtn.addEventListener('click', () => {
             if (customLevel) return; // button is hidden for custom levels
             if (levelIndex >= Levels.length - 1) location.href = 'index.html';
             else loadLevel(levelIndex + 1);
+        });
+
+        // Re-apply dynamic strings whenever the language changes (static
+        // [data-i18n] nodes are handled by the engine itself).
+        I.onChange(() => {
+            clearHint();
+            renderWinStats();
         });
 
         // Custom levels are a single yard: hide the catalogue navigation.

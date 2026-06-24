@@ -7,6 +7,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Block Stacker</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="../shared/i18n.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/blocks.js"></script>
     <script src="../shared/stqry-bridge.js"></script>
     <script src="../shared/chain.js"></script>
@@ -109,15 +111,15 @@
     <div class="container">
         <div class="topbar info-panel">
             <div class="stat">
-                <div class="stat-label">HEIGHT</div>
+                <div class="stat-label" data-i18n="stat_height">HEIGHT</div>
                 <div class="stat-value" id="scoreVal">0</div>
             </div>
             <div class="stat">
-                <div class="stat-label">COMBO</div>
+                <div class="stat-label" data-i18n="stat_combo">COMBO</div>
                 <div class="stat-value" id="comboVal">—</div>
             </div>
             <div class="stat">
-                <div class="stat-label">BEST</div>
+                <div class="stat-label" id="bestLabel" data-i18n="stat_best">BEST</div>
                 <div class="stat-value" id="bestVal">0</div>
             </div>
         </div>
@@ -129,17 +131,17 @@
             </div>
         </div>
 
-        <p class="hint">Tap the tower or hit <strong>Space</strong> to drop a block.</p>
+        <p class="hint" id="hint">Tap the tower or hit <strong>Space</strong> to drop a block.</p>
     </div>
 
     <!-- Game over modal -->
     <div class="modal" id="overModal">
         <div class="modal-content">
-            <div class="win-message" id="overTitle">Tower Toppled!</div>
-            <p id="overText">You stacked 0 blocks.</p>
+            <div class="win-message" id="overTitle" data-i18n="over_title">Tower Toppled!</div>
+            <p id="overText" data-i18n="over_text">You stacked 0 blocks.</p>
             <div class="controls">
-                <button class="btn btn-primary" id="playAgainBtn">▶ Play Again</button>
-                <a href="index.html" class="btn btn-secondary">Menu</a>
+                <button class="btn btn-primary" id="playAgainBtn" data-i18n="btn_again">▶ Play Again</button>
+                <a href="index.html" class="btn btn-secondary" data-i18n="btn_menu">Menu</a>
             </div>
         </div>
     </div>
@@ -147,6 +149,8 @@
     <script>
     (function () {
         'use strict';
+
+        const I = window.BlockI18n;
 
         /* ---------------------------------------------------------------
          * Setup & constants
@@ -179,6 +183,8 @@
         const overModal = document.getElementById('overModal');
         const overTitle = document.getElementById('overTitle');
         const overText = document.getElementById('overText');
+        const hintEl = document.getElementById('hint');
+        const bestLabel = document.getElementById('bestLabel');
 
         // Logical playfield size (CSS pixels). The canvas backing store is
         // scaled by devicePixelRatio for crisp rendering on HiDPI screens.
@@ -234,19 +240,55 @@
         // Challenge mode: repurpose the BEST pill as the GOAL and show the
         // challenge name in the hint line.
         if (TARGET_HEIGHT) {
-            bestVal.parentElement.querySelector('.stat-label').textContent = 'GOAL';
+            // The BEST pill becomes the GOAL pill; drop its data-i18n so the
+            // engine doesn't overwrite the GOAL label with "BEST" on init.
+            bestLabel.removeAttribute('data-i18n');
             bestVal.textContent = TARGET_HEIGHT;
-            const hintEl = document.querySelector('.hint');
-            const nameEl = document.createElement('strong');
-            nameEl.textContent = (CHALLENGE.name || 'Challenge') + ' — ';
-            hintEl.textContent = 'stack ' + TARGET_HEIGHT + ' blocks to win! Tap the tower or hit Space to drop.';
-            hintEl.insertBefore(nameEl, hintEl.firstChild);
-            if (CHALLENGE.name) document.title = CHALLENGE.name + ' - Block Stacker';
         }
         // A standalone page has no menu to go back to.
         if (window.STANDALONE_LEVEL) {
             document.querySelectorAll('a[href="index.html"]').forEach(a => { a.style.display = 'none'; });
         }
+
+        /* ---------------------------------------------------------------
+         * Localisation: static labels are handled by data-i18n; everything
+         * built in JS is (re)rendered here so switching language updates
+         * already-shown content. onChange fires once during init.
+         * ------------------------------------------------------------- */
+        function renderHint() {
+            if (TARGET_HEIGHT) {
+                // GOAL pill label + challenge hint with the (data-driven) name.
+                bestLabel.textContent = I.t('stat_goal');
+                hintEl.textContent = '';
+                const nameEl = document.createElement('strong');
+                nameEl.textContent = (CHALLENGE.name || I.t('challenge_default_name')) + ' — ';
+                hintEl.appendChild(nameEl);
+                hintEl.appendChild(document.createTextNode(I.t('challenge_hint', { n: TARGET_HEIGHT })));
+            } else {
+                // "… hit {key} to drop": wrap the key token in <strong>.
+                hintEl.textContent = '';
+                const parts = String(I.tf('hint') || '').split('{key}');
+                hintEl.appendChild(document.createTextNode(parts[0]));
+                const strong = document.createElement('strong');
+                strong.textContent = I.t('key_space');
+                hintEl.appendChild(strong);
+                hintEl.appendChild(document.createTextNode(parts[1] || ''));
+            }
+        }
+
+        // Re-render the game-over modal text if it's currently shown.
+        function renderOver() {
+            if (state !== 'over' || !lastOver) return;
+            applyOver(lastOver);
+        }
+
+        // Document title follows the language (challenge name takes priority).
+        function renderTitle() {
+            if (CHALLENGE && CHALLENGE.name) document.title = CHALLENGE.name + ' - ' + I.t('doc_title_game');
+            else document.title = I.t('doc_title_game');
+        }
+
+        I.onChange(() => { renderHint(); renderTitle(); renderOver(); });
 
         /* ---------------------------------------------------------------
          * HiDPI canvas sizing
@@ -271,6 +313,7 @@
         let combo;
         let state;       // 'playing' | 'over'
         let lastT;
+        let lastOver = null;   // cached game-over result, for re-localising the modal
 
         function reset() {
             stack = [{ x: (VIEW_W - BLOCK_W) / 2, index: 0 }];
@@ -280,6 +323,7 @@
             score = 0;
             combo = 0;
             state = 'playing';
+            lastOver = null;
             spawnMover();
             updateHud();
             overModal.classList.remove('active');
@@ -336,12 +380,12 @@
             if (Math.abs(offset) <= PERFECT_TOL) {
                 x = below.x;
                 combo++;
-                showFlash(combo >= 2 ? `PERFECT ×${combo}!` : 'PERFECT!', 'var(--good-color)');
+                showFlash(combo >= 2 ? I.t('flash_perfect_combo', { combo: combo }) : I.t('flash_perfect'), 'var(--good-color)');
             } else {
                 combo = 0;
                 const acc = overlap / BLOCK_W;
-                if (acc > 0.8) showFlash('GREAT!', 'var(--accent-strong)');
-                else if (acc > 0.5) showFlash('GOOD', 'var(--ok-color)');
+                if (acc > 0.8) showFlash(I.t('flash_great'), 'var(--accent-strong)');
+                else if (acc > 0.5) showFlash(I.t('flash_good'), 'var(--ok-color)');
             }
 
             stack.push({ x: x, index: stack.length });
@@ -352,6 +396,28 @@
                 return;
             }
             spawnMover();
+        }
+
+        // Fill in the game-over modal from a cached result object so that a
+        // later language switch (onChange → renderOver) re-renders it correctly.
+        // `o.kind` is 'challengeWin' | 'challengeLose' | 'endless'.
+        function applyOver(o) {
+            if (o.kind === 'challengeWin') {
+                overTitle.textContent = (CHALLENGE && CHALLENGE.winTitle) || I.t('challenge_win_title');
+                overText.textContent = (CHALLENGE && CHALLENGE.winMessage) ||
+                    I.t('challenge_win_text', { n: TARGET_HEIGHT });
+            } else if (o.kind === 'challengeLose') {
+                overTitle.textContent = I.t('over_title');
+                overText.innerHTML = I.t('challenge_lose_text', {
+                    score: '<strong>' + o.score + '</strong>',
+                    target: '<strong>' + TARGET_HEIGHT + '</strong>',
+                });
+            } else { // endless
+                overTitle.textContent = (o.isBest && o.score > 0)
+                    ? I.t('newbest_title') : I.t('over_title');
+                const key = o.score === 1 ? 'over_text_one' : 'over_text_many';
+                overText.innerHTML = I.t(key, { n: '<strong>' + o.score + '</strong>' });
+            }
         }
 
         // Challenge mode: the goal height was reached — the tower is built!
@@ -367,9 +433,8 @@
             if (window.parent !== window) {
                 window.parent.postMessage({ type: 'escape-base:minigame-complete' }, '*');
             }
-            overTitle.textContent = (CHALLENGE && CHALLENGE.winTitle) || '🏆 Challenge Complete!';
-            overText.textContent = (CHALLENGE && CHALLENGE.winMessage) ||
-                ('You stacked all ' + TARGET_HEIGHT + ' blocks!');
+            lastOver = { kind: 'challengeWin', score: score };
+            applyOver(lastOver);
             setTimeout(() => overModal.classList.add('active'), 500);
         }
 
@@ -401,9 +466,8 @@
             updateHud();
             if (TARGET_HEIGHT) {
                 // Challenge mode: the GOAL pill replaces BEST, so no best-keeping.
-                overTitle.textContent = 'Tower Toppled!';
-                overText.innerHTML = 'You stacked <strong>' + score + '</strong> of <strong>' +
-                    TARGET_HEIGHT + '</strong> blocks. Try again!';
+                lastOver = { kind: 'challengeLose', score: score };
+                applyOver(lastOver);
                 setTimeout(() => overModal.classList.add('active'), 700);
                 return;
             }
@@ -423,9 +487,8 @@
                 try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
                 bestVal.textContent = best;
             }
-            overTitle.textContent = isBest && score > 0 ? 'New Best! 🏆' : 'Tower Toppled!';
-            overText.innerHTML = 'You stacked <strong>' + score + '</strong> block' +
-                (score === 1 ? '' : 's') + '.';
+            lastOver = { kind: 'endless', score: score, isBest: isBest };
+            applyOver(lastOver);
             // Brief delay so the missed block is seen falling before the modal.
             setTimeout(() => overModal.classList.add('active'), 700);
         }

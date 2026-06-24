@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Wire Puzzle - Play</title>
+    <title data-i18n="game_doc_title">Wire Puzzle - Play</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="../shared/i18n.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="../shared/stqry-bridge.js"></script>
     <script src="../shared/chain.js"></script>
     <style>
@@ -145,8 +147,8 @@
             <div>
                 <canvas id="gameCanvas" width="600" height="600"></canvas>
                 <div class="controls">
-                    <button class="btn btn-secondary" id="resetBtn">🔄 Reset</button>
-                    <button class="btn btn-secondary" id="shareLevelBtn" style="display: none;">🔗 Share</button>
+                    <button class="btn btn-secondary" id="resetBtn" data-i18n="btn_reset">🔄 Reset</button>
+                    <button class="btn btn-secondary" id="shareLevelBtn" style="display: none;" data-i18n="btn_share">🔗 Share</button>
                 </div>
             </div>
 
@@ -155,27 +157,27 @@
                     <h2 id="levelName">Level Name</h2>
                     <div class="stats">
                         <div class="stat">
-                            <div class="stat-label">Moves</div>
+                            <div class="stat-label" data-i18n="stat_moves">Moves</div>
                             <div class="stat-value" id="moveCount">0</div>
                         </div>
                         <div class="stat">
-                            <div class="stat-label">Status</div>
+                            <div class="stat-label" data-i18n="stat_status">Status</div>
                             <div class="stat-value" id="status">Solving...</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="info-panel">
-                    <h3>How to Play</h3>
+                    <h3 data-i18n="how_to_play">How to Play</h3>
                     <p style="text-align: left; margin: 10px 0;">
-                        🖱️ Click on tiles to rotate them<br>
-                        ⚡ Connect the power source to the light<br>
-                        🎯 Solve in minimum moves!
+                        <span data-i18n="how_line_1">🖱️ Click on tiles to rotate them</span><br>
+                        <span data-i18n="how_line_2">⚡ Connect the power source to the light</span><br>
+                        <span data-i18n="how_line_3">🎯 Solve in minimum moves!</span>
                     </p>
                 </div>
 
                 <div class="info-panel">
-                    <h3>🎨 Theme</h3>
+                    <h3 data-i18n="theme_heading">🎨 Theme</h3>
                     <select id="themeSelector" style="width: 100%; padding: 10px; font-size: 1em; border-radius: 5px; background: rgba(0,0,0,0.3); color: #fff; border: 2px solid rgba(255,255,255,0.2);">
                     </select>
                 </div>
@@ -188,13 +190,13 @@
             <div class="win-message" id="winMessage">🎉 Level Complete!</div>
             <div class="stats">
                 <div class="stat">
-                    <div class="stat-label">Total Moves</div>
+                    <div class="stat-label" data-i18n="total_moves">Total Moves</div>
                     <div class="stat-value" id="finalMoves">0</div>
                 </div>
             </div>
             <div class="controls">
-                <button class="btn btn-primary" id="nextLevelBtn">Next Level →</button>
-                <button class="btn btn-secondary" id="replayBtn">🔄 Replay</button>
+                <button class="btn btn-primary" id="nextLevelBtn" data-i18n="btn_next">Next Level →</button>
+                <button class="btn btn-secondary" id="replayBtn" data-i18n="btn_replay">🔄 Replay</button>
             </div>
         </div>
     </div>
@@ -205,6 +207,13 @@
         import { Storage } from './js/core/storage.js';
         import { builtInLevels } from './js/core/levels.js';
         import { ThemeManager } from './js/core/themes.js';
+
+        const I = window.WireI18n;
+
+        // Cached state so the language switcher can re-render dynamic strings.
+        let pageTitleKey = null;   // i18n key for the page title (when not a level name)
+        let pageTitleText = null;  // literal page title (e.g. a level/standalone name)
+        let selectorTitleKey = 'selector_title';
 
         // Initialize theme
         const themeManager = new ThemeManager();
@@ -227,7 +236,11 @@
             // This page was exported as a self-contained standalone level.
             levels = [standaloneLevel];
             currentLevelIndex = 0;
-            document.getElementById('pageTitle').textContent = standaloneLevel.name || 'Wire Puzzle';
+            if (standaloneLevel.name) {
+                pageTitleText = standaloneLevel.name;
+            } else {
+                pageTitleKey = 'page_title_default';
+            }
             startGame(standaloneLevel);
         } else if (levelParam) {
             // Load level from URL parameter
@@ -236,11 +249,11 @@
                 const level = JSON.parse(levelJson);
                 levels = [level];
                 currentLevelIndex = 0;
-                document.getElementById('pageTitle').textContent = 'Shared Level';
+                pageTitleKey = 'page_title_shared';
                 startGame(level);
             } catch (error) {
                 console.error('Failed to load level from URL:', error);
-                alert('Invalid level link. Please check the URL and try again.');
+                alert(I.t('invalid_link'));
                 levels = builtInLevels;
                 showLevelSelector();
             }
@@ -250,17 +263,48 @@
             currentLevelIndex = 0;
             startGame(testLevel);
         } else if (mode === 'custom') {
-            document.getElementById('pageTitle').textContent = 'Custom Levels';
-            document.getElementById('selectorTitle').textContent = 'Select a Custom Level';
+            pageTitleKey = 'page_title_custom';
+            selectorTitleKey = 'selector_title_custom';
             levels = Storage.getCustomLevels();
             showLevelSelector();
         } else {
+            pageTitleKey = 'page_title_play';
             levels = builtInLevels;
             showLevelSelector();
         }
 
         // Initialize theme selector
         initializeThemeSelector();
+
+        // Apply / re-apply all dynamic (non-[data-i18n]) strings on language change.
+        I.onChange(() => {
+            const pageTitleEl = document.getElementById('pageTitle');
+            if (pageTitleText != null) {
+                pageTitleEl.textContent = pageTitleText;
+            } else if (pageTitleKey) {
+                pageTitleEl.textContent = I.t(pageTitleKey);
+            }
+            document.getElementById('selectorTitle').textContent = I.t(selectorTitleKey);
+
+            // Level name (kept as the level's own title) and live status / win text.
+            if (currentLevel) {
+                document.getElementById('levelName').textContent = currentLevel.name;
+            }
+            if (engine) {
+                const state = engine.getState();
+                document.getElementById('status').textContent =
+                    state.won ? I.t('status_complete') : I.t('status_solving');
+            }
+            const winMessageEl = document.getElementById('winMessage');
+            if (winMessageEl) {
+                winMessageEl.textContent = currentLevel?.winMessage || I.t('win_default');
+            }
+
+            // Re-render the level list (it contains a localized empty state).
+            if (document.getElementById('levelSelector').style.display !== 'none') {
+                showLevelSelector();
+            }
+        });
 
         function initializeThemeSelector() {
             const selector = document.getElementById('themeSelector');
@@ -294,7 +338,7 @@
             levelList.innerHTML = '';
 
             if (levels.length === 0) {
-                levelList.innerHTML = '<div class="info-panel"><p>No custom levels found. Create one in the Level Editor!</p><a href="editor.html" class="btn btn-primary">Go to Editor</a></div>';
+                levelList.innerHTML = I.t('no_custom_html');
                 return;
             }
 
@@ -339,7 +383,7 @@
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const index = parseInt(btn.dataset.index);
-                        if (confirm(`Delete level "${levels[index].name}"?`)) {
+                        if (confirm(I.t('confirm_delete', { name: levels[index].name }))) {
                             Storage.deleteLevel(levels[index].id);
                             levels = Storage.getCustomLevels();
                             showLevelSelector();
@@ -493,7 +537,7 @@
             const state = engine.getState();
             renderer.drawGrid(state.tiles, state.rails, engine);
             document.getElementById('moveCount').textContent = state.moveCount;
-            document.getElementById('status').textContent = state.won ? '✓ Complete!' : 'Solving...';
+            document.getElementById('status').textContent = state.won ? I.t('status_complete') : I.t('status_solving');
 
             if (state.won) {
                 setTimeout(showWinModal, 500);
@@ -513,7 +557,7 @@
 
             // Set custom win message if available
             const winMessageEl = document.getElementById('winMessage');
-            winMessageEl.textContent = currentLevel?.winMessage || '🎉 Level Complete!';
+            winMessageEl.textContent = currentLevel?.winMessage || I.t('win_default');
 
             document.getElementById('finalMoves').textContent = engine.moveCount;
             document.getElementById('winModal').classList.add('active');
@@ -530,7 +574,7 @@
 
         document.getElementById('shareLevelBtn').addEventListener('click', () => {
             if (!currentLevel) {
-                alert('No level to share!');
+                alert(I.t('no_level_share'));
                 return;
             }
 
@@ -541,7 +585,7 @@
 
             // Copy to clipboard
             navigator.clipboard.writeText(shareUrl).then(() => {
-                alert('Share link copied to clipboard!\n\nAnyone with this link can play this level.');
+                alert(I.t('share_copied'));
             }).catch(err => {
                 // Fallback for older browsers
                 const textarea = document.createElement('textarea');
@@ -552,7 +596,7 @@
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                alert('Share link copied to clipboard!\n\nAnyone with this link can play this level.');
+                alert(I.t('share_copied'));
             });
         });
 

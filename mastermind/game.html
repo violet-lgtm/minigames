@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Mastermind - Play</title>
+    <title data-i18n="game_title">Mastermind - Play</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="../shared/i18n.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="../shared/stqry-bridge.js"></script>
     <script src="../shared/chain.js"></script>
     <style>
@@ -166,15 +168,15 @@
     </style>
 </head>
 <body>
-    <a href="index.html" class="back-link">← Back to Menu</a>
+    <a href="index.html" class="back-link" data-i18n="back_menu">← Back to Menu</a>
 
     <div class="container">
         <header>
-            <h1 id="pageTitle">🧠 Mastermind</h1>
+            <h1 id="pageTitle" data-i18n="page_title">🧠 Mastermind</h1>
         </header>
 
         <div id="levelSelector" style="display: none;">
-            <h2 id="selectorTitle">Select a Level</h2>
+            <h2 id="selectorTitle" data-i18n="select_level">Select a Level</h2>
             <div class="grid grid-2 level-list" id="levelList"></div>
         </div>
 
@@ -185,8 +187,8 @@
                 </div>
                 <div class="palette" id="palette"></div>
                 <div class="controls">
-                    <button class="btn btn-primary" id="submitBtn">✓ Submit Guess</button>
-                    <button class="btn btn-secondary" id="clearBtn">⌫ Clear Row</button>
+                    <button class="btn btn-primary" id="submitBtn" data-i18n="btn_submit">✓ Submit Guess</button>
+                    <button class="btn btn-secondary" id="clearBtn" data-i18n="btn_clear">⌫ Clear Row</button>
                 </div>
             </div>
 
@@ -195,44 +197,44 @@
                     <h2 id="levelName" style="font-size: 1.4em;">Level</h2>
                     <div class="stats">
                         <div class="stat">
-                            <div class="stat-label">Guesses Used</div>
+                            <div class="stat-label" data-i18n="stat_used">Guesses Used</div>
                             <div class="stat-value" id="usedCount">0</div>
                         </div>
                         <div class="stat">
-                            <div class="stat-label">Remaining</div>
+                            <div class="stat-label" data-i18n="stat_remaining">Remaining</div>
                             <div class="stat-value" id="remainingCount">0</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="info-panel">
-                    <h3>Feedback Key</h3>
+                    <h3 data-i18n="feedback_key">Feedback Key</h3>
                     <div class="legend" style="margin-top: 12px;">
                         <div class="legend-item">
                             <span class="legend-dot" style="background: #4ade80;"></span>
-                            Right colour & spot
+                            <span data-i18n="legend_exact">Right colour & spot</span>
                         </div>
                         <div class="legend-item">
                             <span class="legend-dot" style="background: #facc15;"></span>
-                            Right colour, wrong spot
+                            <span data-i18n="legend_partial">Right colour, wrong spot</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="info-panel">
-                    <h3>How to Play</h3>
+                    <h3 data-i18n="how_to_play">How to Play</h3>
                     <p style="text-align: left; margin: 10px 0; font-size: 0.95em;">
-                        🎨 Click a colour to add it to your guess<br>
-                        ⌫ Click a peg in the active row to remove it<br>
-                        ✓ Submit a full row to get feedback<br>
-                        ⌨️ Keys 1-9 pick colours, Enter submits
+                        <span data-i18n="how_line1">🎨 Click a colour to add it to your guess</span><br>
+                        <span data-i18n="how_line2">⌫ Click a peg in the active row to remove it</span><br>
+                        <span data-i18n="how_line3">✓ Submit a full row to get feedback</span><br>
+                        <span data-i18n="how_line4">⌨️ Keys 1-9 pick colours, Enter submits</span>
                     </p>
                 </div>
 
                 <div class="controls" style="margin: 0;">
-                    <button class="btn btn-secondary btn-small" id="resetBtn">🔄 New Game</button>
-                    <button class="btn btn-secondary btn-small" id="shareBtn" style="display: none;">🔗 Share</button>
-                    <button class="btn btn-secondary btn-small" id="backBtn" style="display: none;">📋 Levels</button>
+                    <button class="btn btn-secondary btn-small" id="resetBtn" data-i18n="btn_newgame">🔄 New Game</button>
+                    <button class="btn btn-secondary btn-small" id="shareBtn" style="display: none;" data-i18n="btn_share">🔗 Share</button>
+                    <button class="btn btn-secondary btn-small" id="backBtn" style="display: none;" data-i18n="btn_levels">📋 Levels</button>
                 </div>
             </div>
         </div>
@@ -249,9 +251,9 @@
                 </div>
             </div>
             <div class="controls">
-                <button class="btn btn-primary" id="nextBtn" style="display: none;">Next Level →</button>
-                <button class="btn btn-secondary" id="replayBtn">🔄 Play Again</button>
-                <button class="btn btn-secondary" id="modalBackBtn" style="display: none;">📋 Levels</button>
+                <button class="btn btn-primary" id="nextBtn" style="display: none;" data-i18n="btn_next">Next Level →</button>
+                <button class="btn btn-secondary" id="replayBtn" data-i18n="btn_replay">🔄 Play Again</button>
+                <button class="btn btn-secondary" id="modalBackBtn" style="display: none;" data-i18n="btn_levels">📋 Levels</button>
             </div>
         </div>
     </div>
@@ -262,8 +264,14 @@
         import { builtInLevels } from './js/core/levels.js';
         import { buildPeg } from './js/core/shapes.js';
 
+        const I = window.MasterI18n;
+
         const EXACT_COLOR = '#4ade80';
         const PARTIAL_COLOR = '#facc15';
+
+        // Cached state so dynamic strings can be re-localised on language change.
+        let pageTitleKey = null;   // i18n key for the page title, when not a level name
+        let lastEnd = null;        // { won } for the end modal
 
         const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get('mode') || 'builtin';
@@ -288,21 +296,24 @@
                 const level = JSON.parse(decodeURIComponent(escape(atob(levelParam))));
                 levels = [level];
                 currentLevelIndex = 0;
-                document.getElementById('pageTitle').textContent = '🔗 Shared Level';
+                pageTitleKey = 'title_shared';
+                document.getElementById('pageTitle').textContent = I.t('title_shared');
                 startGame(level);
             } catch (e) {
-                alert('Invalid level link.');
+                alert(I.t('invalid_link'));
                 levels = builtInLevels;
                 showLevelSelector();
             }
         } else if (testLevel) {
             levels = [testLevel];
             currentLevelIndex = 0;
-            document.getElementById('pageTitle').textContent = '▶️ Test Level';
+            pageTitleKey = 'title_test';
+            document.getElementById('pageTitle').textContent = I.t('title_test');
             startGame(testLevel);
         } else if (mode === 'custom') {
-            document.getElementById('pageTitle').textContent = '📁 Custom Levels';
-            document.getElementById('selectorTitle').textContent = 'Select a Custom Level';
+            pageTitleKey = 'title_custom';
+            document.getElementById('pageTitle').textContent = I.t('title_custom');
+            document.getElementById('selectorTitle').textContent = I.t('select_custom');
             levels = Storage.getCustomLevels();
             showLevelSelector();
         } else {
@@ -319,7 +330,7 @@
             list.innerHTML = '';
 
             if (levels.length === 0) {
-                list.innerHTML = '<div class="info-panel"><p>No custom levels yet. Create one in the editor!</p><a href="editor.html" class="btn btn-primary">Go to Editor</a></div>';
+                list.innerHTML = `<div class="info-panel"><p>${escapeHtml(I.t('no_custom'))}</p><a href="editor.html" class="btn btn-primary">${escapeHtml(I.t('go_editor'))}</a></div>`;
                 return;
             }
 
@@ -327,12 +338,12 @@
                 const cfg = level.config;
                 const item = document.createElement('div');
                 item.className = 'level-item';
-                const setSolution = Array.isArray(level.secret) ? ' · fixed code' : '';
+                const setSolution = Array.isArray(level.secret) ? I.t('badge_set') : '';
                 item.innerHTML = `
                     <div class="level-info">
                         <h3>${escapeHtml(level.name)}</h3>
                         <span class="badge badge-${level.difficulty || 'easy'}">${level.difficulty || 'easy'}</span>
-                        <span style="color:#aaa;">${cfg.codeLength} pegs · ${cfg.colors.length} colours · ${cfg.maxGuesses} guesses${setSolution}</span>
+                        <span style="color:#aaa;">${escapeHtml(I.t('level_spec', { pegs: cfg.codeLength, colors: cfg.colors.length, guesses: cfg.maxGuesses, set: setSolution }))}</span>
                     </div>
                     <div class="level-actions">
                         ${mode === 'custom' ? `
@@ -360,7 +371,7 @@
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const i = btn.dataset.index;
-                        if (confirm(`Delete level "${levels[i].name}"?`)) {
+                        if (confirm(I.t('confirm_delete', { name: levels[i].name }))) {
                             Storage.deleteLevel(levels[i].id);
                             levels = Storage.getCustomLevels();
                             showLevelSelector();
@@ -397,7 +408,7 @@
                 wrap.className = 'palette-item';
                 const btn = document.createElement('button');
                 btn.className = 'peg-btn';
-                btn.title = `Colour ${i + 1}`;
+                btn.title = I.t('peg_colour', { n: i + 1 });
                 btn.appendChild(buildPeg({
                     colorHex: hex,
                     shapeId: config.pipShape,
@@ -477,7 +488,7 @@
                         });
                         if (ci !== null) {
                             peg.classList.add('clickable');
-                            peg.title = 'Remove';
+                            peg.title = I.t('peg_remove');
                             peg.addEventListener('click', () => engine.clearSlot(slot));
                         }
                         pegs.appendChild(peg);
@@ -550,28 +561,37 @@
                 });
             }
 
-            const modal = document.getElementById('endModal');
-            const title = document.getElementById('endTitle');
-            const message = document.getElementById('endMessage');
             document.getElementById('finalUsed').textContent = state.guessesUsed;
+            lastEnd = { won: state.won };
 
             if (state.won) {
-                title.textContent = '🎉 Code Cracked!';
-                message.textContent = currentLevel.winMessage || 'You cracked the code!';
                 // Embedded in escape-base: let the host unlock the next door.
                 if (window.parent !== window) {
                     window.parent.postMessage({ type: 'escape-base:minigame-complete' }, '*');
                 }
-            } else {
-                title.textContent = '💥 Out of Guesses';
-                message.textContent = 'The code defeated you this time — the answer is revealed above.';
             }
+
+            renderEndModal();
 
             const nextBtn = document.getElementById('nextBtn');
             nextBtn.style.display = (state.won && currentLevelIndex >= 0 && currentLevelIndex < levels.length - 1)
                 ? 'inline-block' : 'none';
             document.getElementById('modalBackBtn').style.display = (levels.length > 1) ? 'inline-block' : 'none';
-            modal.classList.add('active');
+            document.getElementById('endModal').classList.add('active');
+        }
+
+        // Render the cached end-modal title + message in the current language.
+        function renderEndModal() {
+            if (!lastEnd) return;
+            const title = document.getElementById('endTitle');
+            const message = document.getElementById('endMessage');
+            if (lastEnd.won) {
+                title.textContent = I.t('won_title');
+                message.textContent = (currentLevel && currentLevel.winMessage) || I.t('won_default');
+            } else {
+                title.textContent = I.t('lost_title');
+                message.textContent = I.t('lost_message');
+            }
         }
 
         function escapeHtml(s) {
@@ -611,9 +631,35 @@
             const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(currentLevel))));
             const url = `${window.location.origin}${window.location.pathname}?level=${encoded}`;
             navigator.clipboard.writeText(url).then(
-                () => alert('Share link copied to clipboard!'),
-                () => prompt('Copy this share link:', url)
+                () => alert(I.t('share_copied')),
+                () => prompt(I.t('share_prompt'), url)
             );
+        });
+
+        // Re-apply dynamic strings when the language changes. Static [data-i18n]
+        // nodes are handled by the engine itself.
+        I.onChange(() => {
+            // Page title: keep level names verbatim, re-localise keyed titles.
+            if (pageTitleKey) {
+                document.getElementById('pageTitle').textContent = I.t(pageTitleKey);
+            }
+            // Level selector (custom title + level cards carry localised specs).
+            if (document.getElementById('levelSelector').style.display !== 'none') {
+                if (mode === 'custom') {
+                    document.getElementById('selectorTitle').textContent = I.t('select_custom');
+                }
+                showLevelSelector();
+            }
+            // Active game: rebuild palette (peg titles) + board (remove titles).
+            // Skip a finished game — re-rendering would re-fire the end modal
+            // (and its trail report) via render()'s game-over branch.
+            if (engine && !engine.isOver() &&
+                document.getElementById('gameArea').style.display !== 'none') {
+                buildPalette(currentLevel.config);
+                render(engine.getState());
+            }
+            // End modal title/message.
+            renderEndModal();
         });
 
         // Keyboard support.

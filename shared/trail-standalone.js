@@ -23,6 +23,90 @@
  */
 import { buildStandalonePage, pageFileName } from './standalone.js';
 
+// Overview/hub strings for the downloaded trail's index page, in the trail's
+// chosen language (def.lang). Baked into the generated page so the standalone
+// overview matches the games (which inherit def.lang via window.STANDALONE_TRAIL).
+const HUB_STRINGS = {
+    en: {
+        default_title: 'Minigame Trail',
+        mode_ordered: '➡️ Play in order',
+        mode_free: '🔀 Play in any order',
+        lbl_games: 'Games', lbl_score: 'Score', lbl_stars: 'Stars',
+        greeting: '🎉 Trail complete!',
+        greeting_named: '🎉 Trail complete, {name}!',
+        pts_unit: 'pts',
+        stars_of: '{stars} of {max} stars',
+        grade_outstanding: '🏆 Outstanding!',
+        grade_great: '🥇 Great run!',
+        grade_welldone: '🥈 Well done!',
+        grade_completed: '🥉 Trail completed!',
+        detail_notplayed: 'Not played yet',
+        detail_locked: 'Locked',
+        btn_play: 'Play →',
+        btn_restart: '↺ Restart Trail',
+        confirm_restart: 'Restart the trail? All saved scores will be cleared.',
+        ns_truck: '{moves} moves (par {par})',
+        ns_master: '{guesses}/{max} guesses',
+        ns_wire: '{moves} moves',
+        ns_slot: '{score} pts, {hits}/{reels} hits',
+        ns_block: '{blocks} blocks stacked',
+        ns_paper_pieces: '{pieces} pieces placed',
+        ns_paper_solved: 'solved',
+    },
+    nl: {
+        default_title: 'Minigame-route',
+        mode_ordered: '➡️ Op volgorde spelen',
+        mode_free: '🔀 In willekeurige volgorde',
+        lbl_games: 'Spellen', lbl_score: 'Score', lbl_stars: 'Sterren',
+        greeting: '🎉 Route voltooid!',
+        greeting_named: '🎉 Route voltooid, {name}!',
+        pts_unit: 'ptn',
+        stars_of: '{stars} van {max} sterren',
+        grade_outstanding: '🏆 Uitstekend!',
+        grade_great: '🥇 Sterke run!',
+        grade_welldone: '🥈 Goed gedaan!',
+        grade_completed: '🥉 Route voltooid!',
+        detail_notplayed: 'Nog niet gespeeld',
+        detail_locked: 'Vergrendeld',
+        btn_play: 'Spelen →',
+        btn_restart: '↺ Route opnieuw',
+        confirm_restart: 'Route opnieuw starten? Alle opgeslagen scores worden gewist.',
+        ns_truck: '{moves} zetten (par {par})',
+        ns_master: '{guesses}/{max} pogingen',
+        ns_wire: '{moves} zetten',
+        ns_slot: '{score} ptn, {hits}/{reels} raak',
+        ns_block: '{blocks} blokken gestapeld',
+        ns_paper_pieces: '{pieces} stukjes geplaatst',
+        ns_paper_solved: 'opgelost',
+    },
+    de: {
+        default_title: 'Minigame-Pfad',
+        mode_ordered: '➡️ Der Reihe nach spielen',
+        mode_free: '🔀 In beliebiger Reihenfolge',
+        lbl_games: 'Spiele', lbl_score: 'Punkte', lbl_stars: 'Sterne',
+        greeting: '🎉 Pfad abgeschlossen!',
+        greeting_named: '🎉 Pfad abgeschlossen, {name}!',
+        pts_unit: 'Pkt',
+        stars_of: '{stars} von {max} Sternen',
+        grade_outstanding: '🏆 Hervorragend!',
+        grade_great: '🥇 Starker Lauf!',
+        grade_welldone: '🥈 Gut gemacht!',
+        grade_completed: '🥉 Pfad abgeschlossen!',
+        detail_notplayed: 'Noch nicht gespielt',
+        detail_locked: 'Gesperrt',
+        btn_play: 'Spielen →',
+        btn_restart: '↺ Pfad neu starten',
+        confirm_restart: 'Pfad neu starten? Alle gespeicherten Punkte werden gelöscht.',
+        ns_truck: '{moves} Züge (Par {par})',
+        ns_master: '{guesses}/{max} Versuche',
+        ns_wire: '{moves} Züge',
+        ns_slot: '{score} Pkt, {hits}/{reels} Treffer',
+        ns_block: '{blocks} Blöcke gestapelt',
+        ns_paper_pieces: '{pieces} Teile platziert',
+        ns_paper_solved: 'gelöst',
+    },
+};
+
 async function fetchText(url) {
     const res = await fetch(new URL(url, window.location.href), { cache: 'no-cache' });
     if (!res.ok) throw new Error(`Could not load ${url} (HTTP ${res.status})`);
@@ -142,7 +226,7 @@ export function indexPageSource({ def, files, bridgeSrc }) {
 '    <header><h1 id="trailTitle"></h1><span class="mode-badge" id="modeBadge"></span></header>\n' +
 '    <div class="final-panel" id="finalPanel">\n' +
 '        <div id="finalGreeting" style="font-weight:800;">🎉 Trail complete!</div>\n' +
-'        <div class="big"><span id="finalPts">0</span> pts</div>\n' +
+'        <div class="big"><span id="finalPts">0</span><span id="finalPtsUnit"> pts</span></div>\n' +
 '        <div class="grade" id="finalGrade"></div>\n' +
 '        <p id="finalStars" style="color:#5e5e5e;margin-top:6px;"></p>\n' +
 '    </div>\n' +
@@ -161,9 +245,25 @@ export function indexPageSource({ def, files, bridgeSrc }) {
 '    var FILES = ' + JSON.stringify(files) + ';\n' +
 '    var storageKey = "trail-" + DEF.id;\n' +
 '    var N = DEF.games.length;\n' +
+'    var STR = ' + asciiJson(HUB_STRINGS) + ';\n' +
+'    var LANG = (DEF.lang && STR[DEF.lang]) ? DEF.lang : "en";\n' +
+'    document.documentElement.lang = LANG;\n' +
+'    function L(key, vars) {\n' +
+'        var s = (STR[LANG] && STR[LANG][key]); if (s == null) s = STR.en[key];\n' +
+'        if (s == null) return key;\n' +
+'        if (vars) { for (var k in vars) s = s.split("{" + k + "}").join(vars[k]); }\n' +
+'        return s;\n' +
+'    }\n' +
 '    function byId(id) { return document.getElementById(id); }\n' +
-'    byId("trailTitle").textContent = "🏁 " + (DEF.title || "Minigame Trail");\n' +
-'    byId("modeBadge").textContent = DEF.mode === "ordered" ? "➡️ Play in order" : "🔀 Play in any order";\n' +
+'    byId("trailTitle").textContent = "🏁 " + (DEF.title || L("default_title"));\n' +
+'    byId("modeBadge").textContent = DEF.mode === "ordered" ? L("mode_ordered") : L("mode_free");\n' +
+'    byId("finalGreeting").textContent = L("greeting");\n' +
+'    byId("finalPtsUnit").textContent = " " + L("pts_unit");\n' +
+'    byId("resetBtn").textContent = L("btn_restart");\n' +
+'    (function () { var labels = document.querySelectorAll(".progress-panel .stat .label");\n' +
+'        if (labels[0]) labels[0].textContent = L("lbl_games");\n' +
+'        if (labels[1]) labels[1].textContent = L("lbl_score");\n' +
+'        if (labels[2]) labels[2].textContent = L("lbl_stars"); })();\n' +
 '    function isDone(prog, i) { return !!(prog && prog.scores && prog.scores[String(i)]); }\n' +
 '    function isUnlocked(prog, i) {\n' +
 '        if (DEF.mode !== "ordered") return true;\n' +
@@ -173,12 +273,12 @@ export function indexPageSource({ def, files, bridgeSrc }) {
 '    function nativeSummary(slug, n) {\n' +
 '        if (!n) return "";\n' +
 '        switch (slug) {\n' +
-'            case "truck-jam":     return n.moves + " moves (par " + n.par + ")";\n' +
-'            case "mastermind":    return n.guesses + "/" + n.maxGuesses + " guesses";\n' +
-'            case "wire-puzzle":   return n.moves + " moves";\n' +
-'            case "slot-reaction": return n.score + " pts, " + n.hits + "/" + n.reels + " hits";\n' +
-'            case "block-stack":   return n.blocks + " blocks stacked";\n' +
-'            case "paper-puzzle":  return n.pieces ? n.pieces + " pieces placed" : "solved";\n' +
+'            case "truck-jam":     return L("ns_truck", { moves: n.moves, par: n.par });\n' +
+'            case "mastermind":    return L("ns_master", { guesses: n.guesses, max: n.maxGuesses });\n' +
+'            case "wire-puzzle":   return L("ns_wire", { moves: n.moves });\n' +
+'            case "slot-reaction": return L("ns_slot", { score: n.score, hits: n.hits, reels: n.reels });\n' +
+'            case "block-stack":   return L("ns_block", { blocks: n.blocks });\n' +
+'            case "paper-puzzle":  return n.pieces ? L("ns_paper_pieces", { pieces: n.pieces }) : L("ns_paper_solved");\n' +
 '            default: return "";\n' +
 '        }\n' +
 '    }\n' +
@@ -198,7 +298,7 @@ export function indexPageSource({ def, files, bridgeSrc }) {
 '            var name = document.createElement("div"); name.className = "name";\n' +
 '            name.textContent = g.name || g.slug; info.appendChild(name);\n' +
 '            var detail = document.createElement("div"); detail.className = "detail";\n' +
-'            detail.textContent = s ? nativeSummary(g.slug, s.native) : (unlocked ? "Not played yet" : "Locked");\n' +
+'            detail.textContent = s ? nativeSummary(g.slug, s.native) : (unlocked ? L("detail_notplayed") : L("detail_locked"));\n' +
 '            info.appendChild(detail); card.appendChild(info);\n' +
 '            if (s) {\n' +
 '                done++; totalPts += s.points; totalStars += s.stars || 0;\n' +
@@ -206,7 +306,7 @@ export function indexPageSource({ def, files, bridgeSrc }) {
 '                sc.innerHTML = "<div class=\\"pts\\">" + s.points + "</div><div class=\\"stars\\">" + "⭐".repeat(s.stars || 0) + "</div>";\n' +
 '                card.appendChild(sc);\n' +
 '            } else if (unlocked) {\n' +
-'                var go = document.createElement("div"); go.className = "go"; go.textContent = "Play →"; card.appendChild(go);\n' +
+'                var go = document.createElement("div"); go.className = "go"; go.textContent = L("btn_play"); card.appendChild(go);\n' +
 '            }\n' +
 '            list.appendChild(card);\n' +
 '        });\n' +
@@ -217,15 +317,15 @@ export function indexPageSource({ def, files, bridgeSrc }) {
 '        if (done === N && N > 0) {\n' +
 '            fp.classList.add("visible");\n' +
 '            byId("finalPts").textContent = totalPts;\n' +
-'            byId("finalStars").textContent = totalStars + " of " + N * 3 + " stars";\n' +
+'            byId("finalStars").textContent = L("stars_of", { stars: totalStars, max: N * 3 });\n' +
 '            var pct = totalPts / (N * 100);\n' +
-'            byId("finalGrade").textContent = pct >= 0.9 ? "🏆 Outstanding!" : pct >= 0.7 ? "🥇 Great run!" : pct >= 0.5 ? "🥈 Well done!" : "🥉 Trail completed!";\n' +
-'            if (window.stqry && stqry.user) { stqry.user.get(function (u) { if (u && u.name && !u.isGuest) byId("finalGreeting").textContent = "🎉 Trail complete, " + u.name + "!"; }); }\n' +
+'            byId("finalGrade").textContent = pct >= 0.9 ? L("grade_outstanding") : pct >= 0.7 ? L("grade_great") : pct >= 0.5 ? L("grade_welldone") : L("grade_completed");\n' +
+'            if (window.stqry && stqry.user) { stqry.user.get(function (u) { if (u && u.name && !u.isGuest) byId("finalGreeting").textContent = L("greeting_named", { name: u.name }); }); }\n' +
 '        } else { fp.classList.remove("visible"); }\n' +
 '    }\n' +
 '    function refresh() { stqry.storage.get(storageKey, function (v) { render(v || null); }); }\n' +
 '    byId("resetBtn").addEventListener("click", function () {\n' +
-'        if (!confirm("Restart the trail? All saved scores will be cleared.")) return;\n' +
+'        if (!confirm(L("confirm_restart"))) return;\n' +
 '        stqry.storage.remove(storageKey, refresh);\n' +
 '    });\n' +
 '    window.addEventListener("stqryStorageUpdated", refresh);\n' +

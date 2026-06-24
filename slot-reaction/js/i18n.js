@@ -1,7 +1,8 @@
-/* Reaction Slots - lightweight i18n + language selector.
- * Exposes window.SlotI18n with: t(key, vars), tf(key) for arrays,
- * onChange(cb), set(code), and a `lang` getter. Self-initialises on load,
- * builds a fixed language menu, and applies [data-i18n] text automatically.
+/* Reaction Slots - language strings.
+ * The i18n machinery lives in ../../shared/i18n.js (window.MiniI18n); this file
+ * just supplies the strings and exposes the instance as window.SlotI18n so the
+ * page scripts keep their familiar API (t, tf, onChange, set, lang, ...).
+ * When played as part of a trail the language follows the trail automatically.
  */
 window.SlotI18n = (function () {
     'use strict';
@@ -141,107 +142,5 @@ window.SlotI18n = (function () {
         },
     };
 
-    const LANGS = [
-        { code: 'en', label: 'EN', flag: '🇬🇧' },
-        { code: 'nl', label: 'NL', flag: '🇳🇱' },
-        { code: 'de', label: 'DE', flag: '🇩🇪' },
-    ];
-    const KEY = 'reactionSlots.lang';
-    const listeners = [];
-    let lang = 'en';
-    let menuEl = null;
-
-    function detect() {
-        try {
-            const saved = localStorage.getItem(KEY);
-            if (saved && T[saved]) return saved;
-        } catch (e) { /* ignore */ }
-        const nav = (navigator.language || 'en').slice(0, 2).toLowerCase();
-        return T[nav] ? nav : 'en';
-    }
-
-    function raw(key) {
-        const v = T[lang] && T[lang][key];
-        return v != null ? v : T.en[key];
-    }
-
-    function t(key, vars) {
-        let s = raw(key);
-        if (s == null) return key;
-        if (vars) {
-            for (const k in vars) s = s.split('{' + k + '}').join(vars[k]);
-        }
-        return s;
-    }
-
-    // For non-string values (e.g. the features array).
-    function tf(key) { return raw(key); }
-
-    function applyStatic(root) {
-        (root || document).querySelectorAll('[data-i18n]').forEach((el) => {
-            el.textContent = t(el.getAttribute('data-i18n'));
-        });
-    }
-
-    function notify() {
-        listeners.forEach((cb) => { try { cb(lang); } catch (e) { /* ignore */ } });
-    }
-
-    function set(code) {
-        if (!T[code]) return;
-        lang = code;
-        try { localStorage.setItem(KEY, lang); } catch (e) { /* ignore */ }
-        document.documentElement.lang = lang;
-        updateMenu();
-        applyStatic(document);
-        notify();
-    }
-
-    function onChange(cb) { listeners.push(cb); }
-
-    function buildMenu() {
-        menuEl = document.createElement('div');
-        menuEl.className = 'lang-menu';
-        menuEl.setAttribute('aria-label', 'Language');
-        LANGS.forEach((L) => {
-            const b = document.createElement('button');
-            b.className = 'lang-btn';
-            b.dataset.lang = L.code;
-            b.innerHTML = '<span class="lang-flag">' + L.flag + '</span>' + L.label;
-            b.addEventListener('click', () => set(L.code));
-            menuEl.appendChild(b);
-        });
-        document.body.appendChild(menuEl);
-        updateMenu();
-    }
-
-    function updateMenu() {
-        if (!menuEl) return;
-        menuEl.querySelectorAll('.lang-btn').forEach((b) => {
-            b.classList.toggle('active', b.dataset.lang === lang);
-        });
-    }
-
-    function init() {
-        lang = detect();
-        document.documentElement.lang = lang;
-        buildMenu();
-        applyStatic(document);
-        notify();
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-
-    return {
-        t,
-        tf,
-        onChange,
-        set,
-        applyStatic,
-        get lang() { return lang; },
-    };
+    return window.MiniI18n.create({ ns: 'reactionSlots', strings: T });
 })();

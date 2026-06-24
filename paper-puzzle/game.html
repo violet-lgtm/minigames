@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paper Puzzle – Play</title>
+  <title data-i18n="game_doc_title">Paper Puzzle – Play</title>
   <link rel="stylesheet" href="css/common.css">
+  <script src="../shared/i18n.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="../shared/stqry-bridge.js"></script>
   <script src="../shared/chain.js"></script>
 </head>
@@ -13,11 +15,11 @@
 
     <!-- Nav bar -->
     <nav class="nav">
-      <a href="./" id="navBack" class="btn btn-sm btn-ghost">← Back</a>
-      <span class="nav-title" id="navTitle">Paper Puzzle</span>
+      <a href="./" id="navBack" class="btn btn-sm btn-ghost" data-i18n="nav_back">← Back</a>
+      <span class="nav-title" id="navTitle" data-i18n="nav_title">Paper Puzzle</span>
       <div class="game-controls">
         <select id="levelSelect" class="level-select" aria-label="Choose level"></select>
-        <button id="resetBtn" class="btn btn-sm">Reset</button>
+        <button id="resetBtn" class="btn btn-sm" data-i18n="reset">Reset</button>
       </div>
     </nav>
 
@@ -31,11 +33,11 @@
   <!-- Win overlay -->
   <div id="winOverlay" class="win-overlay hidden">
     <div class="win-card">
-      <h2 id="winTitle">🎉 Puzzle Complete!</h2>
-      <p id="winMsg">All pieces are in place!</p>
+      <h2 id="winTitle" data-i18n="win_title">🎉 Puzzle Complete!</h2>
+      <p id="winMsg" data-i18n="win_msg">All pieces are in place!</p>
       <div class="win-btns">
-        <button id="nextLevelBtn" class="btn btn-gold">Next Level →</button>
-        <button id="playAgainBtn" class="btn">Play Again</button>
+        <button id="nextLevelBtn" class="btn btn-gold" data-i18n="next_level">Next Level →</button>
+        <button id="playAgainBtn" class="btn" data-i18n="play_again">Play Again</button>
       </div>
     </div>
   </div>
@@ -44,6 +46,8 @@
     import { PaperPuzzleEngine } from './js/core/engine.js';
     import { PaperPuzzleRenderer } from './js/core/renderer.js';
     import { LEVELS } from './js/core/levels.js';
+
+    const I = window.PaperI18n;
 
     // ── Custom level from URL hash ─────────────────────────────────────────────
 
@@ -144,8 +148,8 @@
       if (idx === -1) {
         // Custom level: hide level navigation, set custom win text
         document.getElementById('nextLevelBtn').style.display = 'none';
-        document.getElementById('winTitle').textContent = def.winTitle || '🎉 Puzzle Complete!';
-        document.getElementById('winMsg').textContent   = def.winMsg   || 'You solved it!';
+        document.getElementById('winTitle').textContent = def.winTitle || I.t('win_title');
+        document.getElementById('winMsg').textContent   = def.winMsg   || I.t('custom_win_msg');
       } else {
         // A baked-in built-in level is fixed: no skipping to other scenes.
         document.getElementById('nextLevelBtn').style.display =
@@ -252,7 +256,7 @@
     if (customLevel) {
       // Custom level mode: strip nav down to just title + reset
       document.getElementById('navBack').style.display  = 'none';
-      document.getElementById('navTitle').textContent   = customLevel.name || 'Custom Puzzle';
+      document.getElementById('navTitle').textContent   = customLevel.name || I.t('custom_name');
       document.getElementById('levelSelect').style.display = 'none';
     } else {
       LEVELS.forEach((lv, i) => {
@@ -298,6 +302,24 @@
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => loadLevel(levelIdx), 200);
     });
+
+    // ── Language ─────────────────────────────────────────────────────────────────
+
+    // Re-apply the dynamic strings the engine's applyStatic() can't know about:
+    // the select's aria-label, and (in custom mode) the creator-supplied title /
+    // win text that would otherwise be overwritten by the [data-i18n] defaults.
+    function applyLang() {
+      select.setAttribute('aria-label', I.t('level_aria'));
+      if (customLevel) {
+        document.getElementById('navTitle').textContent = customLevel.name || I.t('custom_name');
+        const cur = levelIdx === -1 ? customLevel : null;
+        if (cur) {
+          document.getElementById('winTitle').textContent = cur.winTitle || I.t('win_title');
+          document.getElementById('winMsg').textContent   = cur.winMsg   || I.t('custom_win_msg');
+        }
+      }
+    }
+    I.onChange(applyLang);
 
     // ── Start ──────────────────────────────────────────────────────────────────
 

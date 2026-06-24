@@ -7,6 +7,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Block Stacker - Build the Tower!</title>
     <link rel="stylesheet" href="css/common.css">
+    <script src="../shared/i18n.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/blocks.js"></script>
     <style>
         .menu-container {
@@ -141,8 +143,8 @@
 <body>
     <div class="container menu-container">
         <header>
-            <h1>🧱 Block Stacker</h1>
-            <p>A block slides back and forth at the top of the screen. Drop it to fall onto the tower — line it up and build as high as you can before you miss!</p>
+            <h1 data-i18n="heading">🧱 Block Stacker</h1>
+            <p data-i18n="lead">A block slides back and forth at the top of the screen. Drop it to fall onto the tower — line it up and build as high as you can before you miss!</p>
         </header>
 
         <div class="preview-cabinet">
@@ -150,30 +152,35 @@
         </div>
 
         <div class="menu-buttons">
-            <a href="game.html" class="btn btn-primary menu-btn">🎮 Play Game</a>
-            <a href="editor.html" class="btn btn-secondary menu-btn">🔧 Create a Challenge</a>
+            <a href="game.html" class="btn btn-primary menu-btn" data-i18n="play">🎮 Play Game</a>
+            <a href="editor.html" class="btn btn-secondary menu-btn" data-i18n="create">🔧 Create a Challenge</a>
         </div>
 
         <div class="skin-section">
-            <div class="skin-title">Block style</div>
+            <div class="skin-title" data-i18n="skin_title">Block style</div>
             <div class="skin-row" id="skinRow"></div>
         </div>
 
-        <ul class="feature-list">
-            <li>The block slides at the very top — drop it to fall straight down onto the tower</li>
-            <li>Every block keeps its full size to stand on, so just don't miss the stack</li>
-            <li>Each drop makes the next block slide back and forth faster</li>
-            <li>Nail a perfect line-up to snap flush and build a combo</li>
-            <li>The camera scrolls up as your tower climbs into the sky</li>
-            <li>Swappable block styles — and an easy hook to add your own</li>
-            <li>Tracks your best height locally; play with a tap, click or spacebar</li>
-        </ul>
+        <ul class="feature-list" id="featureList"></ul>
     </div>
 
     <script>
         (function () {
+            const I = window.BlockI18n;
             const SKIN_KEY = 'blockStack.skin';
             const skins = window.BlockSkins.list();
+
+            /* ----- feature list (re-rendered on language change) ----- */
+            const featureList = document.getElementById('featureList');
+            function renderFeatures() {
+                featureList.innerHTML = '';
+                (I.tf('feat') || []).forEach((f) => {
+                    const li = document.createElement('li');
+                    li.textContent = f;
+                    featureList.appendChild(li);
+                });
+            }
+            I.onChange(renderFeatures);
             let current = localStorage.getItem(SKIN_KEY);
             if (!current || !window.BlockSkins.get(current) ||
                 window.BlockSkins.get(current).id !== current) {

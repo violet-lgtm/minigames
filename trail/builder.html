@@ -129,7 +129,16 @@
                     <label for="trailTitle">Trail name</label>
                     <input type="text" id="trailTitle" maxlength="48" value="Minigame Trail">
                 </div>
+                <div>
+                    <label for="trailLang">Language</label>
+                    <select id="trailLang">
+                        <option value="en">🇬🇧 English</option>
+                        <option value="nl">🇳🇱 Nederlands</option>
+                        <option value="de">🇩🇪 Deutsch</option>
+                    </select>
+                </div>
             </div>
+            <p class="hint" style="margin-top:0">Every game in the trail — and the overview page — is shown in this language, so it stays consistent throughout.</p>
             <label>Play order</label>
             <div class="mode-row">
                 <label><input type="radio" name="mode" value="free" checked> 🔀 Any order</label>
@@ -483,6 +492,7 @@
                 id: 'tr-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
                 title: $('trailTitle').value.trim() || 'Minigame Trail',
                 mode: document.querySelector('input[name="mode"]:checked').value,
+                lang: $('trailLang').value || 'en',
                 games: trail.map(t => ({ slug: t.slug, name: t.name, url: t.url })),
             };
         }

@@ -66,6 +66,84 @@
     }
 
     var storageKey = 'trail-' + def.id;
+
+    // ---- trail-runtime UI strings, in the trail's chosen language ----
+    // The language is baked into the trail definition (def.lang) so the whole
+    // trail — every game's bar plus the overview — stays in one language.
+    var STR = {
+        en: {
+            default_title: 'Minigame Trail',
+            scores_btn: '📋 Scores',
+            overview_btn: '🏁 Overview',
+            bank: 'Finish the game to bank your score!',
+            best: 'Best: {pts} pts {stars}',
+            saved_stays: 'Saved — best stays {pts} pts',
+            saved_new: '✓ Saved: {pts} pts {stars}',
+            now: ' (now)',
+            pts_stars: '{pts} pts {stars}',
+            play_arrow: 'Play →',
+            dash: '—',
+            final_score: '🏁 Final score',
+            total_so_far: 'Total so far',
+            total_line: '{pts} pts · {stars}/{max} ⭐',
+            open_overview: '🏁 Open full overview',
+            close: 'Close',
+            locked_title: 'This game is still locked',
+            locked_body: 'This trail is played in a set order. Up next:',
+        },
+        nl: {
+            default_title: 'Minigame-route',
+            scores_btn: '📋 Scores',
+            overview_btn: '🏁 Overzicht',
+            bank: 'Maak het spel af om je score op te slaan!',
+            best: 'Beste: {pts} ptn {stars}',
+            saved_stays: 'Opgeslagen — beste blijft {pts} ptn',
+            saved_new: '✓ Opgeslagen: {pts} ptn {stars}',
+            now: ' (nu)',
+            pts_stars: '{pts} ptn {stars}',
+            play_arrow: 'Spelen →',
+            dash: '—',
+            final_score: '🏁 Eindscore',
+            total_so_far: 'Totaal tot nu toe',
+            total_line: '{pts} ptn · {stars}/{max} ⭐',
+            open_overview: '🏁 Open volledig overzicht',
+            close: 'Sluiten',
+            locked_title: 'Dit spel is nog vergrendeld',
+            locked_body: 'Deze route wordt in een vaste volgorde gespeeld. Hierna:',
+        },
+        de: {
+            default_title: 'Minigame-Pfad',
+            scores_btn: '📋 Punkte',
+            overview_btn: '🏁 Übersicht',
+            bank: 'Beende das Spiel, um deine Punkte zu sichern!',
+            best: 'Beste: {pts} Pkt {stars}',
+            saved_stays: 'Gespeichert — Beste bleibt {pts} Pkt',
+            saved_new: '✓ Gespeichert: {pts} Pkt {stars}',
+            now: ' (jetzt)',
+            pts_stars: '{pts} Pkt {stars}',
+            play_arrow: 'Spielen →',
+            dash: '—',
+            final_score: '🏁 Endpunktzahl',
+            total_so_far: 'Gesamt bisher',
+            total_line: '{pts} Pkt · {stars}/{max} ⭐',
+            open_overview: '🏁 Volle Übersicht öffnen',
+            close: 'Schließen',
+            locked_title: 'Dieses Spiel ist noch gesperrt',
+            locked_body: 'Dieser Pfad wird in fester Reihenfolge gespielt. Als Nächstes:',
+        },
+    };
+    var lang = (def.lang && STR[def.lang]) ? def.lang : 'en';
+    function L(key, vars) {
+        var s = (STR[lang] && STR[lang][key]);
+        if (s == null) s = STR.en[key];
+        if (s == null) return key;
+        if (vars) { for (var k in vars) s = s.split('{' + k + '}').join(vars[k]); }
+        return s;
+    }
+    if (document.documentElement && !document.documentElement.lang) {
+        document.documentElement.lang = lang;
+    }
+
     var trailB64 = standalone ? null : params.get('trail'); // re-used verbatim when building links
     // In a standalone (downloaded) trail each game is its own file in the same
     // folder; `files` holds their relative names and `indexFile` the hub page.
@@ -140,7 +218,7 @@
             'box-shadow:0 -4px 16px rgba(0,0,0,0.35);');
 
         var label = el('span', 'font-weight:800;');
-        label.textContent = (def.title || 'Minigame Trail') + ' · ' +
+        label.textContent = (def.title || L('default_title')) + ' · ' +
             (index + 1) + ' / ' + def.games.length;
         bar.appendChild(label);
 
@@ -148,13 +226,13 @@
         bar.appendChild(barStatus);
 
         var overview = el('button',
-            BTN_CSS + 'background:rgba(255,255,255,0.14);color:#fff;', '📋 Scores');
+            BTN_CSS + 'background:rgba(255,255,255,0.14);color:#fff;', L('scores_btn'));
         overview.addEventListener('click', showScoresOverlay);
         bar.appendChild(overview);
 
         // In a downloaded trail the hub page is how you pick the next game.
         if (indexFile) {
-            var hub = el('a', BTN_CSS + 'background:rgba(255,255,255,0.14);color:#fff;', '🏁 Overview');
+            var hub = el('a', BTN_CSS + 'background:rgba(255,255,255,0.14);color:#fff;', L('overview_btn'));
             hub.href = indexFile;
             bar.appendChild(hub);
         }
@@ -181,7 +259,7 @@
             'width:100%;max-width:360px;max-height:80vh;overflow:auto;background:#fff;color:#1a1a1a;' +
             'border-radius:16px;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,0.4);');
         card.appendChild(el('div', 'font-weight:800;font-size:1.2em;margin-bottom:14px;',
-            '📋 ' + (def.title || 'Minigame Trail')));
+            '📋 ' + (def.title || L('default_title'))));
 
         var total = 0, totalStars = 0, done = 0;
         def.games.forEach(function (g, i) {
@@ -197,10 +275,11 @@
                 'width:22px;font-weight:800;color:' + (s ? '#2e9e4f' : '#9aa0a8') + ';',
                 s ? '✓' : (unlocked ? String(i + 1) : '🔒')));
             row.appendChild(el('span', 'flex:1;font-weight:700;',
-                (g.name || g.slug) + (i === index ? ' (now)' : '')));
+                (g.name || g.slug) + (i === index ? L('now') : '')));
             row.appendChild(el('span',
                 'font-weight:800;white-space:nowrap;color:' + (s ? '#1a1a1a' : '#9aa0a8') + ';',
-                s ? (s.points + ' pts ' + '⭐'.repeat(s.stars || 0)) : (canJump ? 'Play →' : '—')));
+                s ? L('pts_stars', { pts: s.points, stars: '⭐'.repeat(s.stars || 0) })
+                  : (canJump ? L('play_arrow') : L('dash'))));
             card.appendChild(row);
             if (s) { total += s.points; totalStars += s.stars || 0; done++; }
         });
@@ -208,21 +287,21 @@
         var totalRow = el('div',
             'display:flex;justify-content:space-between;gap:10px;margin-top:14px;font-weight:800;font-size:1.05em;');
         totalRow.appendChild(el('span', '',
-            done >= def.games.length ? '🏁 Final score' : 'Total so far'));
+            done >= def.games.length ? L('final_score') : L('total_so_far')));
         totalRow.appendChild(el('span', '',
-            total + ' pts · ' + totalStars + '/' + (def.games.length * 3) + ' ⭐'));
+            L('total_line', { pts: total, stars: totalStars, max: def.games.length * 3 })));
         card.appendChild(totalRow);
 
         // Footer link to the full overview page (downloaded trails only).
         if (indexFile) {
             var hubLink = el('a',
                 'display:block;text-align:center;margin-top:12px;color:#5e5e5e;font-weight:700;text-decoration:none;',
-                '🏁 Open full overview');
+                L('open_overview'));
             hubLink.href = indexFile;
             card.appendChild(hubLink);
         }
 
-        var close = el('button', BTN_CSS + 'width:100%;margin-top:18px;', 'Close');
+        var close = el('button', BTN_CSS + 'width:100%;margin-top:18px;', L('close'));
         function dismiss() { if (overlay.parentNode) document.body.removeChild(overlay); }
         close.addEventListener('click', dismiss);
         card.appendChild(close);
@@ -245,9 +324,9 @@
         var card = el('div', 'max-width:340px;');
         card.appendChild(el('div', 'font-size:2.4em;margin-bottom:10px;', '🔒'));
         card.appendChild(el('div', 'font-weight:800;font-size:1.2em;margin-bottom:8px;',
-            'This game is still locked'));
+            L('locked_title')));
         card.appendChild(el('p', 'color:#cfcfcf;margin-bottom:18px;',
-            'This trail is played in a set order. Up next:'));
+            L('locked_body')));
         var go = el('a', BTN_CSS,
             '▶ ' + (def.games[firstLocked].name || def.games[firstLocked].slug));
         go.href = gameLink(firstLocked);
@@ -278,9 +357,9 @@
             }
             if (isDone(prog, index)) {
                 var s = prog.scores[String(index)];
-                barStatus.textContent = 'Best: ' + s.points + ' pts ' + '⭐'.repeat(s.stars || 0);
+                barStatus.textContent = L('best', { pts: s.points, stars: '⭐'.repeat(s.stars || 0) });
             } else {
-                barStatus.textContent = 'Finish the game to bank your score!';
+                barStatus.textContent = L('bank');
             }
         });
     }
@@ -313,8 +392,8 @@
                 if (!barStatus) return;
                 var s = prog.scores[key];
                 barStatus.textContent = (prev && points <= prev.points)
-                    ? 'Saved — best stays ' + s.points + ' pts'
-                    : '✓ Saved: ' + s.points + ' pts ' + '⭐'.repeat(s.stars);
+                    ? L('saved_stays', { pts: s.points })
+                    : L('saved_new', { pts: s.points, stars: '⭐'.repeat(s.stars) });
             });
         });
     }

@@ -44,15 +44,16 @@ function moduleChunk(code, label) {
 }
 
 // Depth-first collection of a module graph, emitting dependencies before
-// the modules that import them.
-async function collectModules(code, baseUrl, seen, chunks) {
+// the modules that import them. `load` defaults to fetchText; callers that
+// build many pages can pass a memoizing loader to fetch each file once.
+async function collectModules(code, baseUrl, seen, chunks, load = fetchText) {
     const specs = [...code.matchAll(importRe())].map(m => m[1]);
     for (const spec of specs) {
         const depUrl = new URL(spec, baseUrl);
         if (seen.has(depUrl.href)) continue;
         seen.add(depUrl.href);
-        const depCode = await fetchText(depUrl);
-        await collectModules(depCode, depUrl, seen, chunks);
+        const depCode = await load(depUrl);
+        await collectModules(depCode, depUrl, seen, chunks, load);
         chunks.push(moduleChunk(depCode, depUrl.pathname.split('/').slice(-2).join('/')));
     }
 }
@@ -104,15 +105,17 @@ function bootstrapSource(level, inject) {
  * @param {Object} opts.level level data the game should boot straight into
  * @param {string} [opts.title] <title> for the exported page
  * @param {Object} [opts.inject] extra globals to define (e.g. STANDALONE_TRAIL)
+ * @param {Function} [opts.load] loader for fetching page assets (defaults to
+ *   fetchText); pass a memoizing loader when building many pages in one run.
  * @returns {Promise<string>} complete HTML source
  */
-export async function buildStandalonePage({ gamePage = 'game.html', level, title, inject }) {
+export async function buildStandalonePage({ gamePage = 'game.html', level, title, inject, load = fetchText }) {
     const pageUrl = new URL(gamePage, window.location.href);
-    const doc = new DOMParser().parseFromString(await fetchText(pageUrl), 'text/html');
+    const doc = new DOMParser().parseFromString(await load(pageUrl), 'text/html');
 
     // Inline every stylesheet.
     for (const link of Array.from(doc.querySelectorAll('link[rel="stylesheet"]'))) {
-        const css = await fetchText(new URL(link.getAttribute('href'), pageUrl));
+        const css = await load(new URL(link.getAttribute('href'), pageUrl));
         const style = doc.createElement('style');
         style.textContent = css;
         link.replaceWith(style);
@@ -125,7 +128,7 @@ export async function buildStandalonePage({ gamePage = 'game.html', level, title
 
     // Inline classic <script src="..."> files in place (order preserved).
     for (const s of Array.from(doc.querySelectorAll('script[src]'))) {
-        const js = await fetchText(new URL(s.getAttribute('src'), pageUrl));
+        const js = await load(new URL(s.getAttribute('src'), pageUrl));
         const inline = doc.createElement('script');
         inline.textContent = escapeScriptText(js);
         s.replaceWith(inline);
@@ -135,7 +138,7 @@ export async function buildStandalonePage({ gamePage = 'game.html', level, title
     // with its import statements stripped.
     for (const s of Array.from(doc.querySelectorAll('script[type="module"]'))) {
         const chunks = [];
-        await collectModules(s.textContent, pageUrl, new Set(), chunks);
+        await collectModules(s.textContent, pageUrl, new Set(), chunks, load);
         const main = s.textContent.replace(importRe(), '');
         const inline = doc.createElement('script');
         inline.type = 'module'; // no imports remain; keeps strict-mode + deferred semantics

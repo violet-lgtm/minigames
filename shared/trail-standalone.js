@@ -29,6 +29,21 @@ async function fetchText(url) {
     return res.text();
 }
 
+// A loader that fetches each absolute URL at most once per build. Shared
+// dependencies (the stqry bridge, chain.js, common.css, module graphs) are
+// pulled in by every game page; without this they'd be refetched once per
+// game. Keyed on the resolved href; caches the in-flight promise so parallel
+// callers dedupe too. Scoped to one buildTrailFiles call, so it never serves
+// stale bytes across separate builds (fetchText still bypasses the HTTP cache).
+function memoLoader() {
+    const cache = new Map();
+    return url => {
+        const href = new URL(url, window.location.href).href;
+        if (!cache.has(href)) cache.set(href, fetchText(href));
+        return cache.get(href);
+    };
+}
+
 function asciiJson(obj) {
     return JSON.stringify(obj)
         .replace(/[\u0080-\uffff]/g,
@@ -235,7 +250,8 @@ export async function buildTrailFiles({ def, levels }) {
     const gameFiles = def.games.map((g, i) => 'game-' + (i + 1) + '-' + slugify(g.slug) + '.html');
     const files = [];
 
-    const bridgeSrc = await fetchText('../shared/stqry-bridge.js');
+    const load = memoLoader();
+    const bridgeSrc = await load('../shared/stqry-bridge.js');
 
     for (let i = 0; i < def.games.length; i++) {
         const g = def.games[i];
@@ -258,6 +274,7 @@ export async function buildTrailFiles({ def, levels }) {
             inject: {
                 STANDALONE_TRAIL: { def, index: i, files: gameFiles, indexFile: 'index.html' },
             },
+            load,
         });
         files.push({ name: folder + '/' + gameFiles[i], data: html });
     }

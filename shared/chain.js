@@ -230,13 +230,6 @@
         overview.addEventListener('click', showScoresOverlay);
         bar.appendChild(overview);
 
-        // In a downloaded trail the hub page is how you pick the next game.
-        if (indexFile) {
-            var hub = el('a', BTN_CSS + 'background:rgba(255,255,255,0.14);color:#fff;', L('overview_btn'));
-            hub.href = indexFile;
-            bar.appendChild(hub);
-        }
-
         document.body.appendChild(bar);
         // keep the bar from covering page content
         document.body.style.paddingBottom = '64px';
